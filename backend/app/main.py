@@ -26,27 +26,16 @@ from app.router import (
     chat_route,
 )  # type: ignore
 
-
-# =========================================================
-# Configuration générale
-# =========================================================
-
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
-DISABLE_RAG = os.getenv("DISABLE_RAG", "0") == "1"
-
-
-# =========================================================
-# Création des tables
-# =========================================================
-
+# Créer toutes les tables
 Base.metadata.create_all(bind=engine)
 
+# Variables Render
+DISABLE_RAG_STARTUP = os.getenv("DISABLE_RAG_STARTUP", "0") == "1"
+DISABLE_CHATBOT = os.getenv("DISABLE_CHATBOT", "0") == "1"
 
-# =========================================================
-# Seeding de la base de données
-# =========================================================
 
 def seed_db():
     from app.core.database import SessionLocal
@@ -55,13 +44,9 @@ def seed_db():
     from app.core.security import get_password_hash
 
     db = SessionLocal()
-
     try:
         admin_email = "atef0006@gmail.com"
-
-        admin = db.query(Utilisateur).filter(
-            Utilisateur.email == admin_email
-        ).first()
+        admin = db.query(Utilisateur).filter(Utilisateur.email == admin_email).first()
 
         if not admin:
             print(f"🌱 Seeding database: Creating admin {admin_email}...")
@@ -88,33 +73,29 @@ def seed_db():
             db.commit()
 
             print("✅ Database seeded successfully!")
-
         else:
             print("ℹ️ Database already seeded.")
 
     except Exception as e:
         print(f"❌ Error during seeding: {e}")
         db.rollback()
-
     finally:
         db.close()
 
 
-# =========================================================
-# Lifespan FastAPI
-# =========================================================
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Initialisation au démarrage du serveur.
+    Initialisation du serveur.
 
-    En production Render, il est conseillé de désactiver le RAG
-    avec la variable d'environnement DISABLE_RAG=1 afin d'éviter
-    les problèmes de mémoire et les redémarrages fréquents.
+    DISABLE_RAG_STARTUP=1 :
+        Le chatbot reste disponible, mais le RAG ne s'indexe pas au démarrage.
+        Il se chargera seulement quand l'utilisateur appelle le chatbot.
+
+    DISABLE_CHATBOT=1 :
+        Le chatbot est totalement désactivé.
     """
 
-    # Initialisation des données nécessaires
     seed_db()
 
     async def run_indexing():
@@ -127,20 +108,23 @@ async def lifespan(app: FastAPI):
             print("\n🚀 [RAG] Initialisation de la base de connaissances...")
 
             db = SessionLocal()
-
             try:
                 loop = asyncio.get_event_loop()
                 await loop.run_in_executor(None, index_all_sources, db)
                 print("✅ [RAG] Indexation terminée. Chatbot prêt à l'emploi.\n")
-
             finally:
                 db.close()
 
         except Exception as e:
             print(f"⚠️ [RAG] Indexation échouée : {e}")
 
-    if DISABLE_RAG:
-        print("ℹ️ [RAG] Désactivé en production avec DISABLE_RAG=1.")
+    if DISABLE_CHATBOT:
+        print("ℹ️ [CHATBOT] Chatbot totalement désactivé avec DISABLE_CHATBOT=1.")
+
+    elif DISABLE_RAG_STARTUP:
+        print("ℹ️ [RAG] Indexation au démarrage désactivée avec DISABLE_RAG_STARTUP=1.")
+        print("✅ [CHATBOT] Route chatbot active. Le RAG se chargera à la première question.")
+
     else:
         print("🔄 [RAG] Préparation du moteur d'IA en arrière-plan...")
         asyncio.create_task(run_indexing())
@@ -148,21 +132,12 @@ async def lifespan(app: FastAPI):
     yield
 
 
-# =========================================================
-# Création de l'application FastAPI
-# =========================================================
-
 app = FastAPI(
     title="MainTech API",
     description="API backend de l'application MainTech",
     version="1.0.0",
     lifespan=lifespan,
 )
-
-
-# =========================================================
-# Configuration CORS
-# =========================================================
 
 app.add_middleware(
     CORSMiddleware,
@@ -172,11 +147,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-# =========================================================
 # Routes principales
-# =========================================================
-
 app.include_router(auth_route.router)
 app.include_router(user_route.router_users)
 app.include_router(groupes_route.router_groupes)
@@ -192,28 +163,17 @@ app.include_router(dashboard_route.router_dashboard)
 app.include_router(magasin_route.router_magasin)
 app.include_router(chat_route.router_chat)
 
-
-# =========================================================
-# Route Chatbot / RAG
-# =========================================================
-
-if not DISABLE_RAG:
+# Route chatbot
+if not DISABLE_CHATBOT:
     try:
         from app.chatbot import router as chatbot_route  # type: ignore
-
         app.include_router(chatbot_route)
-        print("✅ [RAG] Router chatbot activé.")
-
+        print("✅ [CHATBOT] Router chatbot activé.")
     except Exception as e:
-        print(f"⚠️ [RAG] Impossible de charger le router chatbot : {e}")
-
+        print(f"⚠️ [CHATBOT] Impossible de charger le router chatbot : {e}")
 else:
-    print("ℹ️ [RAG] Router chatbot désactivé sur Render.")
+    print("ℹ️ [CHATBOT] Router chatbot désactivé.")
 
-
-# =========================================================
-# Routes de test et health check
-# =========================================================
 
 @app.get("/")
 def read_root():
