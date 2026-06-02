@@ -1,0 +1,26 @@
+# Core Web Framework
+fastapi
+uvicorn
+python-multipart
+
+# Database
+sqlalchemy
+psycopg2-binary
+
+# Security & Authentication
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt==4.0.1
+
+# AI Chatbot & RAG
+google-genai
+chromadb
+sentence-transformers
+pypdf
+
+# Utilities & Validation
+python-dotenv
+httpx
+email-validator
+pydantic[email]
+faker

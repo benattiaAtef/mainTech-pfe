@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import 'machine_detail_screen.dart';
 import 'team_screen.dart';
 import 'intervention_management_screen.dart';
+import 'intervention_details_screen.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'chat_screen.dart';
@@ -994,107 +995,117 @@ class _TeamLeaderDashboardState extends State<TeamLeaderDashboard> {
                       final inter = pendingInterventions[index];
                       final isEnCours = inter.statut == 'EN_COURS' || inter.statut == 'ACCEPTEE';
                       
-                      return Container(
-                    width: 280,
-                    margin: const EdgeInsets.only(right: 16, bottom: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                      border: Border.all(color: isEnCours ? AppTheme.primaryBlue.withOpacity(0.3) : Colors.transparent),
-                    ),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: _getStatusColor(inter.statut).withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                inter.statut.toUpperCase(),
-                                style: TextStyle(
-                                  color: _getStatusColor(inter.statut),
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => InterventionDetailsScreen(intervention: inter),
                             ),
-                            const Spacer(),
-                            Text(
-                              _formatDate(inter.dateDebut),
-                              style: const TextStyle(fontSize: 11, color: AppTheme.textGrey),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          inter.panne?.machine?.nom ?? 'Machine Inconnue',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(Icons.person_outline, size: 14, color: AppTheme.textGrey),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                inter.technicien != null 
-                                  ? '${inter.technicien?.prenom} ${inter.technicien?.nom}'
-                                  : 'En attente d\'affectation',
-                                style: const TextStyle(fontSize: 13, color: AppTheme.textGrey),
+                          ).then((_) => _loadData());
+                        },
+                        child: Container(
+                          width: 280,
+                          margin: const EdgeInsets.only(right: 16, bottom: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                            border: Border.all(color: isEnCours ? AppTheme.primaryBlue.withOpacity(0.3) : Colors.transparent),
+                          ),
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: _getStatusColor(inter.statut).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      inter.statut.toUpperCase(),
+                                      style: TextStyle(
+                                        color: _getStatusColor(inter.statut),
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  Text(
+                                    _formatDate(inter.dateDebut),
+                                    style: const TextStyle(fontSize: 11, color: AppTheme.textGrey),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                inter.panne?.machine?.nom ?? 'Machine Inconnue',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        const Divider(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            if (inter.panne?.statut == 'a_valider')
-                              Expanded(
-                                child: ElevatedButton(
-                                  onPressed: () => _handleValider(inter.idPanne),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: AppTheme.successGreen,
-                                    padding: const EdgeInsets.symmetric(vertical: 0),
-                                    minimumSize: const Size(0, 32),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.person_outline, size: 14, color: AppTheme.textGrey),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      inter.technicien != null 
+                                        ? '${inter.technicien?.prenom} ${inter.technicien?.nom}'
+                                        : 'En attente d\'affectation',
+                                      style: const TextStyle(fontSize: 13, color: AppTheme.textGrey),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                  child: const Text('Valider Machine', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                                ),
-                              )
-                            else ...[
-                              Text(
-                                inter.typeAffectation == 'urgente' ? '🚨 URGENT' : '🔧 Standard',
-                                style: TextStyle(
-                                  fontSize: 12, 
-                                  fontWeight: FontWeight.w500,
-                                  color: inter.typeAffectation == 'urgente' ? AppTheme.errorRed : AppTheme.textGrey,
-                                ),
+                                ],
                               ),
-                              const Icon(Icons.arrow_forward_ios, size: 12, color: AppTheme.textGrey),
+                              const Spacer(),
+                              const Divider(height: 10),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  if (inter.panne?.statut == 'a_valider')
+                                    Expanded(
+                                      child: ElevatedButton(
+                                        onPressed: () => _handleValider(inter.idPanne),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: AppTheme.successGreen,
+                                          padding: const EdgeInsets.symmetric(vertical: 0),
+                                          minimumSize: const Size(0, 32),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        ),
+                                        child: const Text('Valider Machine', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                                      ),
+                                    )
+                                  else ...[
+                                    Text(
+                                      inter.typeAffectation == 'urgente' ? '🚨 URGENT' : '🔧 Standard',
+                                      style: TextStyle(
+                                        fontSize: 12, 
+                                        fontWeight: FontWeight.w500,
+                                        color: inter.typeAffectation == 'urgente' ? AppTheme.errorRed : AppTheme.textGrey,
+                                      ),
+                                    ),
+                                    const Icon(Icons.arrow_forward_ios, size: 12, color: AppTheme.textGrey),
+                                  ],
+                                ],
+                              ),
                             ],
-                          ],
+                          ),
                         ),
-                      ],
-                    ),
-                  );
+                      );
                 },
               ),
             );

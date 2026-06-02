@@ -1,0 +1,37 @@
+name: maintech
+services:
+  # --- Service Base de Données (PostgreSQL) ---
+  db:
+    image: postgres:15-alpine
+    container_name: maintech_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: atef*12861161 # Même mot de passe que votre config locale
+      POSTGRES_DB: mainTech
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # --- Service Backend (FastAPI) ---
+  backend:
+    build: ./backend
+    container_name: maintech_backend
+    restart: always
+    depends_on:
+      - db
+    environment:
+      # L'URL pointe vers 'db' qui est le nom du service Docker
+      - DATABASE_URL=postgresql://postgres:atef*12861161@db:5432/mainTech
+      - GEMINI_API_KEY=AIzaSyAcSo27GWmgxFewHhFkPEE_v4G6BwStkeE
+    ports:
+      - "8000:8000"
+    volumes:
+      # Volume pour persister la base vectorielle ChromaDB et les documents
+      - ./backend/app/data:/app/app/data
+
+
+
+volumes:
+  pgdata:

@@ -13,42 +13,42 @@ from app.utils.panne_util import assigner_panne_en_attente_si_possible
 router_techniciens = APIRouter(prefix="/techniciens", tags=["Techniciens"])
 
 def get_technician_stats(db: Session, tech: Technicien):
-    """Calculates today's stats for a technician."""
+    """Calculates today's stats for a technician (only time spent today)."""
     import datetime
-    from sqlalchemy import func
-    from app.models.enums import StatutInterventionEnum
+    from sqlalchemy import or_
     
-    today = datetime.date.today()
     now = datetime.datetime.utcnow()
+    # today_start is the start of the current day in UTC
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     
-    # Count interventions for today (any status)
-    count_today = db.query(func.count(Intervention.id_intervention)).filter(
+    # Fetch all interventions that could overlap with today
+    interventions = db.query(Intervention).filter(
         Intervention.id_technicien == tech.id_technicien,
-        func.date(Intervention.date_debut) == today
-    ).scalar() or 0
-    
-    # Finished today
-    finished_today = db.query(Intervention).filter(
-        Intervention.id_technicien == tech.id_technicien,
-        func.date(Intervention.date_debut) == today,
-        Intervention.statut == StatutInterventionEnum.TERMINEE
+        Intervention.date_debut <= now,
+        or_(
+            Intervention.date_fin == None,
+            Intervention.date_fin >= today_start
+        )
     ).all()
     
-    # Ongoing today
-    ongoing_today = db.query(Intervention).filter(
-        Intervention.id_technicien == tech.id_technicien,
-        Intervention.statut == StatutInterventionEnum.EN_COURS
-    ).all()
-    
+    count_today = 0
     total_minutes = 0.0
-    for i in finished_today:
-        if i.duree is not None:
-            total_minutes += i.duree
+    
+    for i in interventions:
+        # Count if it started today
+        if i.date_debut >= today_start:
+            count_today += 1
             
-    for i in ongoing_today:
-        if i.date_scan_qr:
-            elapsed = (now - i.date_scan_qr).total_seconds() / 60
-            total_minutes += elapsed
+        # Time calculation only for today's portion
+        start_work = i.date_scan_qr if i.date_scan_qr else i.date_debut
+        end_work = i.date_fin if i.date_fin else now
+        
+        # Intersection interval with [today_start, now]
+        start_intersect = max(start_work, today_start)
+        end_intersect = min(end_work, now)
+        
+        if start_intersect < end_intersect:
+            total_minutes += (end_intersect - start_intersect).total_seconds() / 60
             
     return count_today, int(total_minutes)
 

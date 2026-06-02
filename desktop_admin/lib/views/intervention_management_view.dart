@@ -150,6 +150,7 @@ class _InterventionManagementViewState extends State<InterventionManagementView>
                 SizedBox(
                   width: double.infinity,
                   child: DataTable(
+                    showCheckboxColumn: false,
                     headingRowColor: MaterialStateProperty.all(const Color(0xFFF8FAFC)),
                     columns: const [
                       DataColumn(label: Text('ID / DATE', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -160,45 +161,56 @@ class _InterventionManagementViewState extends State<InterventionManagementView>
                     ],
                     rows: filtered.map((interv) {
                       final statusColor = _getStatusColor(interv.statut);
-                      return DataRow(cells: [
-                        DataCell(Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('#${interv.id}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                            Text(DateFormat('dd/MM HH:mm').format(interv.dateDebut), style: const TextStyle(fontSize: 11, color: AppTheme.textGrey)),
-                          ],
-                        )),
-                        DataCell(Row(
-                          children: [
-                            const Icon(Icons.person_pin, size: 16, color: AppTheme.primaryBlue),
-                            const SizedBox(width: 8),
-                            Text(interv.technicien != null ? '${interv.technicien!.prenom} ${interv.technicien!.nom}' : 'ID: ${interv.idTechnicien}'),
-                          ],
-                        )),
-                        DataCell(Text(interv.panne?.machine?.nom ?? 'Machine non spécifiée')),
-                        DataCell(_buildStatusBadge(interv.statut, statusColor)),
-                        DataCell(Row(
-                          children: [
-                            TextButton(
-                              onPressed: () {
-                                showDialog(
-                                  context: context,
-                                  builder: (context) => InterventionDetailDialog(
-                                    intervention: interv,
-                                    onRefresh: _fetchInterventions,
-                                  ),
-                                );
-                              }, 
-                              child: const Text('Voir Rapport', style: TextStyle(fontSize: 12))
+                      return DataRow(
+                        onSelectChanged: (_) {
+                          showDialog(
+                            context: context,
+                            builder: (context) => InterventionDetailDialog(
+                              intervention: interv,
+                              onRefresh: _fetchInterventions,
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline, size: 18, color: AppTheme.errorRed),
-                              onPressed: () => _deleteIntervention(interv.id),
-                            ),
-                          ],
-                        )),
-                      ]);
+                          );
+                        },
+                        cells: [
+                          DataCell(Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('#${interv.id}', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text(DateFormat('dd/MM HH:mm').format(interv.dateDebut), style: const TextStyle(fontSize: 11, color: AppTheme.textGrey)),
+                            ],
+                          )),
+                          DataCell(Row(
+                            children: [
+                              const Icon(Icons.person_pin, size: 16, color: AppTheme.primaryBlue),
+                              const SizedBox(width: 8),
+                              Text(interv.technicien != null ? '${interv.technicien!.prenom} ${interv.technicien!.nom}' : 'ID: ${interv.idTechnicien}'),
+                            ],
+                          )),
+                          DataCell(Text(interv.panne?.machine?.nom ?? 'Machine non spécifiée')),
+                          DataCell(_buildStatusBadge(interv.statut, statusColor)),
+                          DataCell(Row(
+                            children: [
+                              TextButton(
+                                onPressed: () {
+                                  showDialog(
+                                    context: context,
+                                    builder: (context) => InterventionDetailDialog(
+                                      intervention: interv,
+                                      onRefresh: _fetchInterventions,
+                                    ),
+                                  );
+                                }, 
+                                child: const Text('Voir Rapport', style: TextStyle(fontSize: 12))
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, size: 18, color: AppTheme.errorRed),
+                                onPressed: () => _deleteIntervention(interv.id),
+                              ),
+                            ],
+                          )),
+                        ],
+                      );
                     }).toList(),
                   ),
                 ),

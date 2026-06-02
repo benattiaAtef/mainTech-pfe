@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart'; // Add this for kIsWeb
 import 'package:http/http.dart' as http;
@@ -5,13 +6,28 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
 class ApiService {
-  // Use localhost for web and 10.140.235.191 for physical devices/emulators
-  static const String baseUrl = kIsWeb ? 'http://localhost:8000' : 'http://192.168.0.84:8000';
+  // Use localhost for web and 192.168.100.34 for physical devices/emulators
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: kIsWeb ? 'http://localhost:8000' : 'http://192.168.100.34:8000',
+  );
 
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString('access_token');
   }
+  Future<User> getMe() async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/users/me'),
+      headers: await _getHeaders(),
+    ).timeout(const Duration(seconds: 20));
+    if (response.statusCode == 200) {
+      return User.fromJson(jsonDecode(response.body));
+    } else {
+      throw Exception('Failed to load user profile');
+    }
+  }
+
   Future<Map<String, String>> _getHeaders() async {
     final token = await getToken();
     return {
@@ -20,22 +36,10 @@ class ApiService {
     };
   }
 
-  Future<User> getMe() async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/users/me'),
-      headers: await _getHeaders(),
-    );
-    if (response.statusCode == 200) {
-      return User.fromJson(jsonDecode(response.body));
-    } else {
-      throw Exception('Failed to load user profile');
-    }
-  }
-
   Future<Map<String, dynamic>> login(String email, String password) async {
     final url = Uri.parse('$baseUrl/auth/login');
-    print('DEBUG: Attente de réponse de : $url');
-    print('DEBUG: Payload : {"email": "$email", "mot_de_passe": "******"}');
+    print('DEBUG: Tentative de connexion à: $url');
+    print('DEBUG: Email: $email');
 
     try {
       final response = await http.post(
@@ -45,7 +49,12 @@ class ApiService {
           'email': email,
           'mot_de_passe': password,
         }),
-      ).timeout(const Duration(seconds: 10));
+      ).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw TimeoutException('Timeout lors de la connexion. Le serveur met trop de temps à répondre.');
+        },
+      );
 
       print('DEBUG: Status Code : ${response.statusCode}');
       print('DEBUG: Body : ${response.body}');
@@ -57,9 +66,14 @@ class ApiService {
         await prefs.setString('user_role', data['role']);
         await prefs.setInt('user_id', data['user_id']);
         return data;
+      } else if (response.statusCode == 401) {
+        throw Exception('Email ou mot de passe incorrect');
       } else {
-        throw Exception('Failed to login: ${response.body}');
+        throw Exception('Erreur de connexion: ${response.statusCode} - ${response.body}');
       }
+    } on TimeoutException catch (e) {
+      print('DEBUG TIMEOUT: $e');
+      rethrow;
     } catch (e) {
       print('DEBUG ERROR: Erreur lors de l\'appel API : $e');
       rethrow;
@@ -72,7 +86,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$baseUrl/machines/'),
       headers: await _getHeaders(),
-    );
+    ).timeout(const Duration(seconds: 20));
 
     if (response.statusCode == 200) {
       List jsonResponse = jsonDecode(response.body);
@@ -86,7 +100,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$baseUrl/machines/$id'),
       headers: await _getHeaders(),
-    );
+    ).timeout(const Duration(seconds: 20));
 
     if (response.statusCode == 200) {
       return Machine.fromJson(jsonDecode(response.body));
@@ -100,7 +114,7 @@ class ApiService {
       Uri.parse('$baseUrl/machines/create'),
       headers: await _getHeaders(),
       body: jsonEncode(data),
-    );
+    ).timeout(const Duration(seconds: 20));
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
@@ -112,7 +126,7 @@ class ApiService {
     final response = await http.delete(
       Uri.parse('$baseUrl/machines/$id'),
       headers: await _getHeaders(),
-    );
+    ).timeout(const Duration(seconds: 20));
     if (response.statusCode != 200) {
       throw Exception('Failed to delete machine');
     }
@@ -123,7 +137,7 @@ class ApiService {
       Uri.parse('$baseUrl/machines/qrcode'),
       headers: await _getHeaders(),
       body: jsonEncode({'qrcode': code}),
-    );
+    ).timeout(const Duration(seconds: 20));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -145,7 +159,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$baseUrl/pannes/'),
       headers: await _getHeaders(),
-    );
+    ).timeout(const Duration(seconds: 20));
     if (response.statusCode == 200) {
       return List<Map<String, dynamic>>.from(jsonDecode(response.body));
     } else {
@@ -157,7 +171,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$baseUrl/pannes/machine/$machineId'),
       headers: await _getHeaders(),
-    );
+    ).timeout(const Duration(seconds: 20));
     if (response.statusCode == 200) {
       return List<Map<String, dynamic>>.from(jsonDecode(response.body));
     } else {
@@ -169,7 +183,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$baseUrl/types-pannes/'),
       headers: await _getHeaders(),
-    );
+    ).timeout(const Duration(seconds: 20));
 
     if (response.statusCode == 200) {
       return List<Map<String, dynamic>>.from(jsonDecode(response.body));
@@ -193,7 +207,7 @@ class ApiService {
         'priorite': priority,
         if (gravite != null) 'gravite': gravite,
       }),
-    );
+    ).timeout(const Duration(seconds: 20));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -210,7 +224,7 @@ class ApiService {
         'id_type_panne': typePanneId,
         'priorite': priority,
       }),
-    );
+    ).timeout(const Duration(seconds: 20));
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -225,7 +239,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$baseUrl/interventions/'),
       headers: await _getHeaders(),
-    );
+    ).timeout(const Duration(seconds: 20));
     if (response.statusCode == 200) {
       List jsonResponse = jsonDecode(response.body);
       return jsonResponse.map((i) => Intervention.fromJson(i)).toList();
@@ -238,7 +252,7 @@ class ApiService {
     final response = await http.delete(
       Uri.parse('$baseUrl/interventions/$id'),
       headers: await _getHeaders(),
-    );
+    ).timeout(const Duration(seconds: 20));
     if (response.statusCode != 204 && response.statusCode != 200) {
       throw Exception('Failed to delete intervention');
     }
@@ -253,7 +267,7 @@ class ApiService {
         'id_technicien': techId,
         'type_affectation': typeAffectation,
       }),
-    );
+    ).timeout(const Duration(seconds: 20));
     if (response.statusCode == 200 || response.statusCode == 201) {
       return jsonDecode(response.body);
     } else {
@@ -267,7 +281,7 @@ class ApiService {
     final response = await http.get(
       Uri.parse('$baseUrl/users/'),
       headers: await _getHeaders(),
-    );
+    ).timeout(const Duration(seconds: 20));
     if (response.statusCode == 200) {
       return List<Map<String, dynamic>>.from(jsonDecode(response.body));
     } else {
@@ -279,7 +293,7 @@ class ApiService {
     final response = await http.delete(
       Uri.parse('$baseUrl/users/$userId'),
       headers: await _getHeaders(),
-    );
+    ).timeout(const Duration(seconds: 20));
     if (response.statusCode != 200) {
       throw Exception('Failed to delete user');
     }

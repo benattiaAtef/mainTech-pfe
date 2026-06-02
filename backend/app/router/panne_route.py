@@ -35,7 +35,7 @@ def lister_pannes(
     current_user = Depends(require_role(RoleEnum.ADMINISTRATEUR, RoleEnum.CHEF_EQUIPE, RoleEnum.SUPERVISEUR)),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Panne)
+    query = db.query(Panne).filter(Panne.statut == StatutPanneEnum.RESOLUE)
     
     # Isolation pour CHEF_EQUIPE
     if current_user.role == RoleEnum.CHEF_EQUIPE:

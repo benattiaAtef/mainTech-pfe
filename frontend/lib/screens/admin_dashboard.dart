@@ -92,13 +92,6 @@ class AdminDashboard extends StatelessWidget {
                   Colors.brown,
                   () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MagasinManagementScreen())),
                 ),
-                _buildAdminCard(
-                  context,
-                  'Paramètres',
-                  Icons.settings_suggest_rounded,
-                  Colors.teal,
-                  () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ConfigManagementScreen())),
-                ),
               ],
             ),
           ],

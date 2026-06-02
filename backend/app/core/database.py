@@ -2,13 +2,19 @@
 Configuration de la base de données SQLAlchemy
 """
 from multiprocessing.util import DEBUG
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from typing import Optional
 
 # Créer le moteur de base de données
-SQLALCHEMY_DATABASE_URL = f'postgresql://postgres:atef*12861161@localhost:5432/mainTech'
+# En production/Docker, on utilise l'URL fournie par l'environnement
+# Par défaut, on garde l'URL locale pour ne pas casser le dev actuel
+SQLALCHEMY_DATABASE_URL = os.getenv(
+    "DATABASE_URL", 
+    "postgresql://postgres:atef*12861161@localhost:5432/mainTech"
+)
 
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)

@@ -14,7 +14,49 @@ from app.chatbot import router as chatbot_route # type: ignore
 
 # Créer toutes les tables
 Base.metadata.create_all(bind=engine)
-#print("✅ Tables créées!")
+
+def seed_db():
+    from app.core.database import SessionLocal
+    from app.models.users import Utilisateur, Administrateur
+    from app.models.enums import RoleEnum, StatutPresenceEnum
+    from app.core.security import get_password_hash
+    
+    db = SessionLocal()
+    try:
+        # Vérifier si l'admin existe déjà
+        admin_email = "atef0006@gmail.com"
+        admin = db.query(Utilisateur).filter(Utilisateur.email == admin_email).first()
+        
+        if not admin:
+            print(f"🌱 Seeding database: Creating admin {admin_email}...")
+            new_admin = Utilisateur(
+                nom="Atef",
+                prenom="Admin",
+                email=admin_email,
+                mot_de_passe=get_password_hash("mdp123456"),
+                role=RoleEnum.ADMINISTRATEUR,
+                statut_presence=StatutPresenceEnum.EN_TRAVAIL
+            )
+            db.add(new_admin)
+            db.commit()
+            db.refresh(new_admin)
+            
+            # Créer le record Administrateur lié
+            admin_record = Administrateur(
+                id_utilisateur=new_admin.id_utilisateur,
+                niveau_acces="super_admin"
+            )
+            db.add(admin_record)
+            db.commit()
+            print("✅ Database Seeded successfully!")
+        else:
+            print("ℹ️ Database already seeded.")
+    except Exception as e:
+        print(f"❌ Error during seeding: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
 
 
 
@@ -44,6 +86,9 @@ async def lifespan(app: FastAPI):
             print("✅ [RAG] Indexation terminée. Chatbot prêt à l'emploi.\n")
         except Exception as e:
             print(f"⚠️ [RAG] Indexation échouée : {e}")
+
+    # Exécuter le seeding de la base de données
+    seed_db()
 
     # On lance l'indexation sans l'attendre (background)
     asyncio.create_task(run_indexing())

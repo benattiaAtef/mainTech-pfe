@@ -218,16 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   
-                  const SizedBox(height: 24),
-                  Center(
-                    child: TextButton(
-                      onPressed: () {},
-                      child: const Text(
-                        'Mot de passe oublié ?',
-                        style: TextStyle(color: AppTheme.textGrey),
-                      ),
-                    ),
-                  ),
+
                 ],
               ),
             ),

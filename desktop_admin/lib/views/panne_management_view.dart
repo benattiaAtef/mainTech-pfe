@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
+import '../components/panne_detail_dialog.dart';
 
 class PanneManagementView extends StatefulWidget {
   const PanneManagementView({super.key});
@@ -110,6 +111,7 @@ class _PanneManagementViewState extends State<PanneManagementView> {
                 SizedBox(
                   width: double.infinity,
                   child: DataTable(
+                    showCheckboxColumn: false,
                     headingRowColor: MaterialStateProperty.all(const Color(0xFFF8FAFC)),
                     columns: const [
                       DataColumn(label: Text('ID PANNE', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -120,18 +122,27 @@ class _PanneManagementViewState extends State<PanneManagementView> {
                     ],
                     rows: filtered.map((panne) {
                       final priority = panne['priorite'] ?? 1;
-                      return DataRow(cells: [
-                        DataCell(Text('#${panne['id_panne']}', style: const TextStyle(fontWeight: FontWeight.bold))),
-                        DataCell(Text('Machine #${panne['id_machine']}')),
-                        DataCell(_buildPriorityBadge(priority)),
-                        DataCell(Text(panne['statut'] ?? 'Inconnu', style: const TextStyle(fontSize: 13))),
-                        DataCell(Row(
-                          children: [
-                            TextButton(onPressed: () {}, child: const Text('Assigner', style: TextStyle(fontSize: 12))),
-                            IconButton(icon: const Icon(Icons.info_outline, size: 18), onPressed: () {}),
-                          ],
-                        )),
-                      ]);
+                      return DataRow(
+                        onSelectChanged: (_) => _showPanneDetail(panne),
+                        cells: [
+                          DataCell(Text('#${panne['id_panne']}', style: const TextStyle(fontWeight: FontWeight.bold))),
+                          DataCell(Text('Machine #${panne['id_machine']}')),
+                          DataCell(_buildPriorityBadge(priority)),
+                          DataCell(Text(panne['statut'] ?? 'Inconnu', style: const TextStyle(fontSize: 13))),
+                          DataCell(Row(
+                            children: [
+                              TextButton(
+                                onPressed: () => _showPanneDetail(panne),
+                                child: const Text('Voir Détails', style: TextStyle(fontSize: 12)),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.info_outline, size: 18),
+                                onPressed: () => _showPanneDetail(panne),
+                              ),
+                            ],
+                          )),
+                        ],
+                      );
                     }).toList(),
                   ),
                 ),
@@ -139,6 +150,16 @@ class _PanneManagementViewState extends State<PanneManagementView> {
           ),
         ),
       ],
+    );
+  }
+
+  void _showPanneDetail(Map<String, dynamic> panne) {
+    showDialog(
+      context: context,
+      builder: (context) => PanneDetailDialog(
+        panne: panne,
+        onRefresh: _fetchPannes,
+      ),
     );
   }
 

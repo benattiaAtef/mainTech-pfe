@@ -74,7 +74,7 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     et lui accorde les accès correspondants.
     """
     # 0. BYPASS DE SECOURS (DEBUG)
-    if payload.email == "atef0006@gmail.com" and payload.mot_de_passe == "admin123":
+    if payload.email == "atef0006@gmail.com" and payload.mot_de_passe == "mdp123456":
          print("DEBUG: EMERGENCY BYPASS ACTIVATED for Admin")
          admin_user = db.query(Utilisateur).filter(Utilisateur.role == RoleEnum.ADMINISTRATEUR.value).first()
          if admin_user:

@@ -3,6 +3,7 @@ import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../models/models.dart';
 import 'package:intl/intl.dart';
+import 'intervention_details_screen.dart';
 
 class InterventionManagementScreen extends StatefulWidget {
   const InterventionManagementScreen({super.key});
@@ -265,114 +266,125 @@ class _InterventionManagementScreenState extends State<InterventionManagementScr
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(color: Colors.grey.withOpacity(0.1)),
       ),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.engineering_rounded, color: statusColor, size: 24),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Intervention #${interv.id}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      const SizedBox(height: 2),
-                      Row(
-                        children: [
-                          Icon(Icons.precision_manufacturing_outlined, size: 14, color: AppTheme.textGrey.withOpacity(0.7)),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              interv.panne?.machine?.nom ?? 'Machine inconnue',
-                              style: const TextStyle(color: AppTheme.textGrey, fontSize: 13, fontWeight: FontWeight.w500),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Text(
-                        'Localisation: ${interv.panne?.machine?.localisation ?? "N/A"}',
-                        style: TextStyle(color: AppTheme.textGrey.withOpacity(0.8), fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        interv.statut.toUpperCase(),
-                        style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Priorité: ${interv.panne?.priorite ?? "N/A"}',
-                      style: TextStyle(
-                        color: (interv.panne?.priorite ?? 0) >= 3 ? AppTheme.errorRed : AppTheme.textGrey,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => InterventionDetailsScreen(intervention: interv),
             ),
-            const Divider(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+          ).then((_) => _fetchInterventions());
+        },
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.engineering_rounded, color: statusColor, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Intervention #${interv.id}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Icon(Icons.precision_manufacturing_outlined, size: 14, color: AppTheme.textGrey.withOpacity(0.7)),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                interv.panne?.machine?.nom ?? 'Machine inconnue',
+                                style: const TextStyle(color: AppTheme.textGrey, fontSize: 13, fontWeight: FontWeight.w500),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          'Localisation: ${interv.panne?.machine?.localisation ?? "N/A"}',
+                          style: TextStyle(color: AppTheme.textGrey.withOpacity(0.8), fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      const Text('TECHNICIEN', style: TextStyle(color: AppTheme.textGrey, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          interv.statut.toUpperCase(),
+                          style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 10),
+                        ),
+                      ),
                       const SizedBox(height: 4),
                       Text(
-                        interv.technicien != null 
-                          ? '${interv.technicien!.prenom} ${interv.technicien!.nom}'
-                          : 'ID: ${interv.idTechnicien}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
+                        'Priorité: ${interv.panne?.priorite ?? "N/A"}',
+                        style: TextStyle(
+                          color: (interv.panne?.priorite ?? 0) >= 3 ? AppTheme.errorRed : AppTheme.textGrey,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    const Text('DÉBUT', style: TextStyle(color: AppTheme.textGrey, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
-                    const SizedBox(height: 4),
-                    Text(
-                      DateFormat('dd/MM HH:mm').format(interv.dateDebut),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                ],
+              ),
+              const Divider(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('TECHNICIEN', style: TextStyle(color: AppTheme.textGrey, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                        const SizedBox(height: 4),
+                        Text(
+                          interv.technicien != null 
+                            ? '${interv.technicien!.prenom} ${interv.technicien!.nom}'
+                            : 'ID: ${interv.idTechnicien}',
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.errorRed),
-                  onPressed: () => _confirmDelete(interv.id),
-                ),
-              ],
-            ),
-          ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      const Text('DÉBUT', style: TextStyle(color: AppTheme.textGrey, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                      const SizedBox(height: 4),
+                      Text(
+                        DateFormat('dd/MM HH:mm').format(interv.dateDebut),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, color: AppTheme.errorRed),
+                    onPressed: () => _confirmDelete(interv.id),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -50,7 +50,7 @@ async def lister_interventions(
     query = db.query(Intervention).options(
         joinedload(Intervention.technicien).joinedload(Technicien.utilisateur),
         joinedload(Intervention.panne).joinedload(Panne.machine)
-    )
+    ).filter(Intervention.statut == StatutInterventionEnum.TERMINEE)
 
     # Isolation pour CHEF_EQUIPE : voit les interventions sur SES machines OU par SES techniciens
     if current_user.role == RoleEnum.CHEF_EQUIPE:
@@ -64,42 +64,9 @@ async def lister_interventions(
         else:
             return []
 
-    pannes_en_attente = db.query(Panne).filter(
-        Panne.statut == StatutPanneEnum.EN_ATTENTE
-    ).options(joinedload(Panne.machine).joinedload(Machine.groupe_machine)).all()
-
-    # Si CHEF_EQUIPE, filtrer les pannes aussi
-    if current_user.role == RoleEnum.CHEF_EQUIPE:
-        chef = db.query(ChefEquipe).filter(ChefEquipe.id_utilisateur == current_user.id_utilisateur).first()
-        if chef and chef.id_groupe_supervise:
-            pannes_en_attente = [p for p in pannes_en_attente if p.machine.groupe_machine.id_groupe_tech_principal == chef.id_groupe_supervise]
-        else:
-            pannes_en_attente = []
-
-    # Mapper les pannes sans intervention en objets simulant une intervention
-    virtual_interventions = []
-    # On récupère les IDs des pannes qui ont déjà une intervention
-    ids_pannes_avec_interv = {i.id_panne for i in query.all()}
-    
-    for p in pannes_en_attente:
-        if p.id_panne not in ids_pannes_avec_interv:
-            # Créer un objet factice (dict) que Pydantic pourra valider si from_orm est bien géré 
-            # ou si on le transforme en objet
-            virtual_interventions.append({
-                "id_intervention": -p.id_panne, # ID négatif unique basé sur id_panne
-                "id_panne": p.id_panne,
-                "id_technicien": 0,
-                "date_debut": p.date_declaration,
-                "statut": StatutInterventionEnum.EN_ATTENTE,
-                "type_affectation": TypeAffectationEnum.AUTOMATIQUE,
-                "panne": p,
-                "technicien": None
-            })
-
     interventions_reelles = query.offset(skip).limit(limit).all()
     
-    # Combiner et retourner (on peut trier par date)
-    result = list(interventions_reelles) + virtual_interventions
+    result = list(interventions_reelles)
     
     def get_sort_key(x):
         dt = x.date_debut if hasattr(x, 'date_debut') else x['date_debut']
@@ -147,20 +114,11 @@ async def interventions_par_technicien(
             joinedload(Intervention.technicien),
             joinedload(Intervention.panne).joinedload(Panne.machine)
         )
-        .filter(Intervention.id_technicien == id_technicien)
-    )
-
-    # For TECHNICIEN: hide interventions that still need chef authorization
-    if current_user.role == RoleEnum.TECHNICIEN:
-        # Join with AutorisationExceptionnelle and filter those that ARE NOT in EN_ATTENTE
-        # Outer join because some interventions don't have an authorization record (fallback)
-        from sqlalchemy import or_
-        query = query.outerjoin(AutorisationExceptionnelle).filter(
-            or_(
-                AutorisationExceptionnelle.id_autorisation == None,
-                AutorisationExceptionnelle.statut != StatutAutorisationEnum.EN_ATTENTE
-            )
+        .filter(
+            Intervention.id_technicien == id_technicien,
+            Intervention.statut == StatutInterventionEnum.TERMINEE
         )
+    )
 
     return query.all()
 
@@ -806,7 +764,30 @@ async def autoriser_intervention(
         intervention.statut = StatutInterventionEnum.ANNULEE
         intervention.panne.statut = StatutPanneEnum.EN_ATTENTE
         intervention.date_fin = datetime.utcnow()
+
+        # ✅ FIX 1 : Libérer le technicien (il était bloqué EN_INTERVENTION sans panne active)
+        tech = intervention.technicien
+        if tech:
+            tech.statut = StatutTechnicienEnum.DISPONIBLE
+            tech.date_dernier_statut = datetime.utcnow()
+
         db.commit()
+
+        # ✅ FIX 2 : Notifier le technicien du refus via WebSocket
+        if tech:
+            panne = intervention.panne
+            machine = panne.machine if panne else None
+            await notification_manager.ws_manager.send(tech.id_utilisateur, {
+                "type": "AUTORISATION_REFUSEE",
+                "message": f"❌ Votre demande d'intervention exceptionnelle sur la machine '{machine.nom if machine else 'N/A'}' a été refusée par le Chef d'Équipe.",
+                "id_intervention": id_intervention,
+                "id_panne": panne.id_panne if panne else None,
+            })
+
+        # ✅ FIX 3 : Relancer la réaffectation automatique (chercher un autre technicien pour cette panne)
+        if tech:
+            await assigner_panne_en_attente_si_possible(db, tech.id_technicien)
+
         return {"message": "Intervention rejetée. La panne est remise en attente.", "statut": "refusee"}
 
 

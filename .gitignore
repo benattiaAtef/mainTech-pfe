@@ -29,11 +29,20 @@ venv/
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
+.pub-cache/
+.pub/
 .build/
+/build/
+/coverage/
+/android/app/debug
+/android/app/profile
+/android/app/release
 ios/Pods/
 ios/.symlinks/
 ios/Flutter/Flutter.framework
 ios/Flutter/Flutter.podspec
+**/doc/api/
+**/ios/Flutter/.last_build_id
 
 # =========================
 # IDE

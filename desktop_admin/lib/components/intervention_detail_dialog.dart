@@ -44,6 +44,9 @@ class _InterventionDetailDialogState extends State<InterventionDetailDialog> wit
   }
 
   void _initRapportFields() {
+    const validEtatFinal = ['Opérationnel', 'Dégradé', 'Hors Service'];
+    const validTypeTravail = ['MCP', 'MNP', 'AUT'];
+    
     if (_currentIntervention.rapport != null) {
       final rapport = _currentIntervention.rapport!;
       _descriptionController.text = rapport.descriptionPanne ?? "";
@@ -52,8 +55,17 @@ class _InterventionDetailDialogState extends State<InterventionDetailDialog> wit
       _travauxController.text = rapport.travauxEffectues ?? "";
       _observationsController.text = rapport.observations ?? "";
       _tempsArretController.text = rapport.tempsArret?.toString() ?? "";
-      _typeTravail = rapport.typeTravail ?? 'MNP';
-      _etatFinal = rapport.etatFinal ?? 'Opérationnel';
+      
+      // Valider que le typeTravail est dans la liste, sinon prendre la valeur par défaut
+      _typeTravail = (rapport.typeTravail != null && validTypeTravail.contains(rapport.typeTravail)) 
+        ? rapport.typeTravail! 
+        : 'MNP';
+      
+      // Valider que l'etatFinal est dans la liste, sinon prendre la valeur par défaut
+      _etatFinal = (rapport.etatFinal != null && validEtatFinal.contains(rapport.etatFinal)) 
+        ? rapport.etatFinal! 
+        : 'Opérationnel';
+      
       if (rapport.piecesRechange != null) {
         _piecesRechange = List<Map<String, dynamic>>.from(
           rapport.piecesRechange!.map((p) => Map<String, dynamic>.from(p as Map)),
@@ -486,14 +498,17 @@ class _InterventionDetailDialogState extends State<InterventionDetailDialog> wit
     );
   }
 
-  Widget _buildDropdownField(String label, List<String> options, String value, void Function(String?) onChanged) {
+  Widget _buildDropdownField(String label, List<String> options, String? value, void Function(String?) onChanged) {
+    // S'assurer que la valeur est dans les options, sinon prendre la première option
+    String validValue = (value != null && options.contains(value)) ? value : options.first;
+    
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.textDark)),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: value,
+          value: validValue,
           onChanged: onChanged,
           items: options.map((o) => DropdownMenuItem(value: o, child: Text(o, style: const TextStyle(fontSize: 14)))).toList(),
           decoration: InputDecoration(

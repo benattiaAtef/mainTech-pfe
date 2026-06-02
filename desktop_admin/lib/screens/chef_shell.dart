@@ -52,7 +52,6 @@ class _ChefShellState extends State<ChefShell> {
     ChefMenuItem(title: 'Techniciens', icon: FontAwesomeIcons.userGear),
     ChefMenuItem(title: 'Chat d\'Équipe', icon: FontAwesomeIcons.message),
     ChefMenuItem(title: 'Interventions Groupe', icon: FontAwesomeIcons.clipboardList),
-    ChefMenuItem(title: 'Performance Equipe', icon: FontAwesomeIcons.chartBar),
   ];
 
   Widget _buildCurrentView() {
@@ -67,8 +66,6 @@ class _ChefShellState extends State<ChefShell> {
         return const TeamChatView();
       case 3:
         return const TeamInterventionsView();
-      case 4:
-        return _buildPerformancePlaceholder();
       default:
         return const Center(child: Text('Vue non implémentée'));
     }
@@ -221,13 +218,6 @@ class _ChefShellState extends State<ChefShell> {
     );
   }
 
-  Widget _buildPerformancePlaceholder() {
-    return Container(
-      height: 400,
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), border: Border.all(color: const Color(0xFFF1F5F9))),
-      child: const Center(child: Text('Statistiques de performance du groupe bientôt disponibles')),
-    );
-  }
 }
 
 class ChefMenuItem {

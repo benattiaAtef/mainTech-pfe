@@ -120,61 +120,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                height: 24,
-                                width: 24,
-                                child: Checkbox(
-                                  value: false,
-                                  onChanged: (val) {},
-                                  visualDensity: VisualDensity.compact,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Se souvenir de moi',
-                                style: TextStyle(fontSize: 12, color: AppTheme.textGrey),
-                              ),
-                            ],
-                          ),
-                          Flexible(
-                            child: TextButton(
-                              onPressed: () {},
-                              style: TextButton.styleFrom(
-                                padding: EdgeInsets.zero,
-                                minimumSize: const Size(0, 0),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: const Text(
-                                'Mot de passe oublié ?',
-                                style: TextStyle(color: AppTheme.primaryBlue, fontSize: 12),
-                                textAlign: TextAlign.right,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
                       const SizedBox(height: 32),
                       ElevatedButton(
                         onPressed: _isLoading ? null : _handleLogin,
                         child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : const Text('Se connecter'),
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text('Pas encore de compte ? ', style: TextStyle(color: AppTheme.textGrey)),
-                          TextButton(
-                            onPressed: () {},
-                            child: const Text('S\'inscrire', style: TextStyle(color: AppTheme.primaryBlue)),
-                          ),
-                        ],
                       ),
                       const SizedBox(height: 32),
                     ],

@@ -66,6 +66,62 @@ class _TechnicianDashboardState extends State<TechnicianDashboard> {
               );
               _loadData();
             }
+          } else if (data['type'] == 'AUTORISATION_REFUSEE') {
+            // ✅ Notifier le technicien que sa demande d'autorisation a été refusée
+            if (mounted) {
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (ctx) => AlertDialog(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  backgroundColor: Colors.white,
+                  title: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF2F2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.cancel_outlined, color: Color(0xFFEF4444), size: 28),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Autorisation Refusée',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1E293B),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  content: Text(
+                    data['message'] ?? 'Votre demande d\'intervention exceptionnelle a été refusée par le Chef d\'Équipe.',
+                    style: const TextStyle(fontSize: 14, color: Color(0xFF64748B), height: 1.5),
+                  ),
+                  actions: [
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.of(ctx).pop(),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFEF4444),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text('Compris', style: TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+              // Recharger le dashboard pour refléter le nouveau statut
+              _loadData();
+            }
           } else if (data['type'] == 'SIGNALING') {
             final signal = data['data'];
             final fromId = data['from_id'];
