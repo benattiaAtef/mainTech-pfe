@@ -13,7 +13,7 @@ from typing import Optional
 # Par défaut, on garde l'URL locale pour ne pas casser le dev actuel
 SQLALCHEMY_DATABASE_URL = os.getenv(
     "DATABASE_URL", 
-    "postgresql://postgres:atef*12861161@localhost:5432/mainTech"
+    "postgresql://neondb_owner:npg_NOsRW1E0hvdg@ep-damp-paper-ap4etceh-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 )
 
 

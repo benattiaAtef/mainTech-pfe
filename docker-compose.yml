@@ -22,8 +22,8 @@ services:
     depends_on:
       - db
     environment:
-      # L'URL pointe vers 'db' qui est le nom du service Docker
-      - DATABASE_URL=postgresql://postgres:atef*12861161@db:5432/mainTech
+      # L'URL pointe vers la base de données Neon en ligne
+      - DATABASE_URL=postgresql://neondb_owner:npg_NOsRW1E0hvdg@ep-damp-paper-ap4etceh-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require
       - GEMINI_API_KEY=AIzaSyAcSo27GWmgxFewHhFkPEE_v4G6BwStkeE
     ports:
       - "8000:8000"
