@@ -13,11 +13,15 @@ from typing import Optional
 # Par défaut, on garde l'URL locale pour ne pas casser le dev actuel
 SQLALCHEMY_DATABASE_URL = os.getenv(
     "DATABASE_URL", 
-    "postgresql://neondb_owner:npg_NOsRW1E0hvdg@ep-damp-paper-ap4etceh-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+    "postgresql://neondb_owner:npg_NOsRW1E0hvdg@ep-damp-paper-ap4etceh-pooler.c-7.us-east-1.aws.neon.tech/neondb?sslmode=require"
 )
 
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"options": "-csearch_path=public"},
+    pool_pre_ping=True,
+)
 
 
 # Créer la session locale
