@@ -3,7 +3,7 @@ Configuration de la base de données SQLAlchemy
 """
 from multiprocessing.util import DEBUG
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from typing import Optional
@@ -19,9 +19,17 @@ SQLALCHEMY_DATABASE_URL = os.getenv(
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
-    connect_args={"options": "-csearch_path=public"},
     pool_pre_ping=True,
 )
+
+# Neon pooler doesn't support search_path in startup params,
+# so we set it after each connection is established
+@event.listens_for(engine, "connect")
+def set_search_path(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("SET search_path TO public")
+    cursor.close()
+    dbapi_connection.commit()
 
 
 # Créer la session locale
