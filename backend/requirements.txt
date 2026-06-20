@@ -13,7 +13,7 @@ passlib[bcrypt]
 bcrypt==4.0.1
 
 # AI Chatbot & RAG
-google-genai
+groq
 chromadb
 sentence-transformers
 pypdf

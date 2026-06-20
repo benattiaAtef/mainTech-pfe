@@ -1,0 +1,31 @@
+﻿# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Environnements virtuels
+.venv/
+venv/
+env/
+
+# Logs
+*.log
+hs_err_pid*.log
+
+# ChromaDB / RAG généré automatiquement
+data/chroma_db/
+app/data/chroma_db/
+
+# Fichiers générés
+data/*.html
+app/data/*.html
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

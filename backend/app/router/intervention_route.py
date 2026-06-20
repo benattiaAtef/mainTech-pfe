@@ -50,7 +50,7 @@ async def lister_interventions(
     query = db.query(Intervention).options(
         joinedload(Intervention.technicien).joinedload(Technicien.utilisateur),
         joinedload(Intervention.panne).joinedload(Panne.machine)
-    ).filter(Intervention.statut == StatutInterventionEnum.TERMINEE)
+    )
 
     # Isolation pour CHEF_EQUIPE : voit les interventions sur SES machines OU par SES techniciens
     if current_user.role == RoleEnum.CHEF_EQUIPE:
@@ -115,8 +115,7 @@ async def interventions_par_technicien(
             joinedload(Intervention.panne).joinedload(Panne.machine)
         )
         .filter(
-            Intervention.id_technicien == id_technicien,
-            Intervention.statut == StatutInterventionEnum.TERMINEE
+            Intervention.id_technicien == id_technicien
         )
     )
 

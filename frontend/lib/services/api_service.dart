@@ -6,11 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/models.dart';
 
 class ApiService {
-  // Use localhost for web and 192.168.100.34 for physical devices/emulators
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: kIsWeb ? 'http://localhost:8000' : 'http://192.168.100.34:8000',
-  );
+  // Hardcoded Render URL to guarantee we bypass any cached environment variables
+  static const String baseUrl = "https://atef1100-maintech-backend.hf.space";
 
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();

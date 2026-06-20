@@ -1,6 +1,6 @@
 {
-    "name": "frontend",
-    "short_name": "frontend",
+    "name": "mainTech",
+    "short_name": "mainTech",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -32,7 +32,7 @@ Write-Host "==========================================================" -Foregro
 Write-Host "   Projet demarre avec succes !" -ForegroundColor Green
 Write-Host "==========================================================" -ForegroundColor Green
 Write-Host "Composants lances :" -ForegroundColor Cyan
-Write-Host "   - Backend API & DB       : Docker (http://localhost:8000/docs)" -ForegroundColor Yellow
+Write-Host "   - Backend API & DB       : Docker (https://maintech-pfe.onrender.com/docs)" -ForegroundColor Yellow
 Write-Host "   - Console Desktop Admin  : Fenêtre native Windows" -ForegroundColor Yellow
 Write-Host "   - Application Mobile     : Téléphone physique" -ForegroundColor Yellow
 Write-Host "==========================================================" -ForegroundColor Green

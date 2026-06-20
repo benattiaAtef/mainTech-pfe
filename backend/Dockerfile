@@ -1,36 +1,45 @@
 # Utiliser une image Python légère
 FROM python:3.11-slim
 
-# Éviter la génération de fichiers .pyc et activer le mode non-interactif
+# Éviter la génération de fichiers .pyc et afficher les logs directement
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+
+# Dossiers de cache dans /tmp pour Hugging Face
+ENV HF_HOME=/tmp/huggingface
+ENV TRANSFORMERS_CACHE=/tmp/huggingface/transformers
+ENV SENTENCE_TRANSFORMERS_HOME=/tmp/huggingface/sentence_transformers
+ENV TORCH_HOME=/tmp/torch
 
 # Définir le répertoire de travail
 WORKDIR /app
 
-# Installer les dépendances système nécessaires (pour psycopg2 et autres)
+# Installer les dépendances système nécessaires
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
+    gcc \
+    git \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copier le fichier des dépendances
+# Copier les dépendances Python
 COPY requirements.txt .
 
-# ÉTAPE D'OPTIMISATION CRITIQUE :
-# Par défaut, sentence-transformers installe PyTorch (torch) avec support GPU/CUDA, ce qui télécharge un package énorme de ~2 Go.
-# Comme le conteneur tourne sur CPU, on installe la version CPU de PyTorch en premier (~150 Mo, soit 10x plus léger et rapide).
+# Installer pip
+RUN pip install --no-cache-dir --upgrade pip
+
+# Installer PyTorch CPU uniquement pour éviter les packages CUDA très lourds
 RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
 
-# Installer le reste des dépendances Python
+# Installer le reste des dépendances
 RUN pip install --no-cache-dir --default-timeout=100 -r requirements.txt
 
-# Copier le reste du code source
+# Copier le code source
 COPY . .
 
-# Exposer le port sur lequel l'app tourne
-EXPOSE 8000
+# Hugging Face Spaces utilise le port défini dans README.md app_port
+EXPOSE 7860
 
-# Commande pour démarrer l'application
-# On utilise 0.0.0.0 pour être accessible depuis l'extérieur du conteneur
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Lancer FastAPI sur le port 7860
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]

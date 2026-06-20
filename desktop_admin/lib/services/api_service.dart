@@ -6,10 +6,7 @@ import '../models/models.dart';
 
 class ApiService {
   // Use localhost for local development (Desktop/Web) and your current IP for physical devices/emulators
-  static const String baseUrl = String.fromEnvironment(
-    'API_BASE_URL',
-    defaultValue: (kIsWeb || !kReleaseMode) ? 'http://localhost:8000' : 'http://192.168.0.84:8000',
-  );
+  static const String baseUrl = "https://atef1100-maintech-backend.hf.space";
 
   Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();

@@ -1,24 +1,24 @@
 """
-Chatbot Service — TECHBOT avec RAG (Version google-genai 1.0+)
+Chatbot Service — TECHBOT avec RAG (Version Groq)
 ============================================================
 Pipeline complet :
   1. Retrieve : recherche sémantique dans ChromaDB (rag_service)
-  2. Augment  : injection du contexte dans le prompt Gemini
-  3. Generate : génération de la réponse avec le SDK google-genai
+  2. Augment  : injection du contexte dans le prompt
+  3. Generate : génération de la réponse avec Groq (llama-3.3-70b-versatile)
 """
 
 import os
 import logging
 from typing import Optional
-from google import genai # type: ignore
-from dotenv import load_dotenv # type: ignore
+from groq import Groq  # type: ignore
+from dotenv import load_dotenv  # type: ignore
 
-from app.chatbot.rag_service import retrieve_context # type: ignore
+from app.chatbot.rag_service import retrieve_context  # type: ignore
 
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 # ─── Prompt Système ────────────────────────────────────────────────────────────
 SYSTEM_PROMPT = """Tu es TECHBOT, un ingénieur expert en maintenance industrielle avec 20 ans d'expérience. 
@@ -45,11 +45,11 @@ def get_chatbot_response(
     use_rag: bool = True,
 ) -> str:
     """
-    Génère une réponse augmentée par RAG via le nouveau SDK google-genai.
-    Utilise gemini-2.5-flash (seul modèle fonctionnel sans erreur de quota/404).
+    Génère une réponse augmentée par RAG via l'API Groq.
+    Utilise le modèle llama-3.3-70b-versatile (gratuit et très rapide).
     """
-    if not GEMINI_API_KEY:
-        return "❌ Erreur de configuration : clé API Gemini manquante dans .env"
+    if not GROQ_API_KEY:
+        return "❌ Erreur de configuration : clé API Groq manquante. Ajoutez GROQ_API_KEY dans les secrets Hugging Face."
 
     try:
         # ── RETRIEVAL (RAG) ────────────────────────────────────────────────
@@ -60,63 +60,42 @@ def get_chatbot_response(
                 search_query = f"{machine_context} — {user_message}"
             rag_context = retrieve_context(search_query)
 
-        # ── CONSTRUCTION DU PROMPT ──────────────────────────────────────────
-        # On injecte le SYSTEM_PROMPT au début du texte pour une compatibilité maximale
-        # avec les différentes versions de l'API Gemini.
-        prompt_parts = [
-            f"INSTRUCTION SYSTÈME : {SYSTEM_PROMPT}",
-            "\n---"
-        ]
+        # ── CONSTRUCTION DU PROMPT UTILISATEUR ─────────────────────────────
+        user_content_parts = []
         if machine_context:
-            prompt_parts.append(f"[Machine : {machine_context}]")
+            user_content_parts.append(f"[Machine concernée : {machine_context}]")
         if rag_context:
-            prompt_parts.append(f"CONTEXTE TECHNIQUE (RAG) :\n{rag_context}")
-        
-        prompt_parts.append(f"\nQUESTION DU TECHNICIEN : {user_message}")
-        final_prompt = "\n\n".join(prompt_parts)
+            user_content_parts.append(f"CONTEXTE TECHNIQUE (issu des manuels) :\n{rag_context}")
+        user_content_parts.append(f"QUESTION DU TECHNICIEN : {user_message}")
+        user_content = "\n\n".join(user_content_parts)
 
-        # ── GÉNÉRATION ──────────────────────────────────────────────────────
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        
-        # Liste de modèles à essayer par ordre de préférence (selon disponibilité sur ce compte)
-        models_to_try = [
-            "gemini-flash-latest",
-            "gemini-1.5-flash",
-            "gemini-2.0-flash",
-            "gemini-pro-latest"
-        ]
-        
-        last_error = ""
-        for model_name in models_to_try:
-            try:
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=final_prompt
-                )
-                if response and response.text:
-                    return response.text
-                continue
-            except Exception as e:
-                last_error = str(e)
-                error_msg = str(last_error)
-                # On réessaie pour les erreurs temporaires : Surcharge (503), Quota (429), Pas trouvé (404), Timeout (504)
-                if any(err in error_msg for err in ["503", "429", "404", "504"]):
-                    logger.warning(f"Modèle {model_name} indisponible ({error_msg}), essai du modèle suivant...")
-                    continue
-                else:
-                    # Pour les autres erreurs fatales, on arrête
-                    break
+        # ── GÉNÉRATION VIA GROQ ─────────────────────────────────────────────
+        client = Groq(api_key=GROQ_API_KEY)
 
-        # Si tous ont échoué
-        if str(last_error).find("429") != -1: # type: ignore
-            return (
-                "❌ Quota Gemini épuisé (Erreur 429).\n\n"
-                "Le modèle gemini-2.5-flash a été essayé mais semble être restreint.\n\n"
-                "Solution : Reliez un compte de facturation (même gratuit) sur Google Cloud Console."
-            )
-        return f"❌ Erreur TECHBOT : {last_error}"
+        completion = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_content},
+            ],
+            temperature=0.3,
+            max_tokens=2048,
+        )
+
+        response_text = completion.choices[0].message.content
+        if response_text:
+            return response_text
+        return "❌ Le modèle n'a pas retourné de réponse. Veuillez réessayer."
 
     except Exception as e:
         error_msg = str(e)
-        logger.error(f"Erreur fatale chatbot: {error_msg}")
-        return f"❌ Erreur du service IA : {error_msg}"
+        logger.error(f"Erreur TECHBOT Groq: {error_msg}")
+
+        if "401" in error_msg or "invalid_api_key" in error_msg.lower():
+            return "❌ Clé API Groq invalide. Vérifiez votre clé sur https://console.groq.com/keys"
+        if "429" in error_msg:
+            return "❌ Quota Groq temporairement épuisé. Réessayez dans quelques secondes."
+        if "503" in error_msg or "502" in error_msg:
+            return "❌ Service Groq temporairement indisponible. Réessayez dans un instant."
+
+        return f"❌ Erreur TECHBOT : {error_msg}"

@@ -450,12 +450,15 @@ async def creer_panne(
         }
 
     # ── 7. Réponse enrichie ───────────────────────────────────────────────────
-    message = (
-        f"Panne #{nouvelle_panne.id_panne} créée et en attente de validation par le chef d'équipe pour "
-        f"{technicien_info['prenom']} {technicien_info['nom']}"
-        if technicien_info
-        else f"Panne #{nouvelle_panne.id_panne} créée. Aucun technicien disponible actuellement."
-    )
+    if technicien_info:
+        if type_affectation == TypeAffectationEnum.URGENTE:
+            message = (f"Panne #{nouvelle_panne.id_panne} créée et en attente de validation par le chef d'équipe pour "
+                       f"{technicien_info['prenom']} {technicien_info['nom']}.")
+        else:
+            message = (f"Panne #{nouvelle_panne.id_panne} créée et affectée directement à "
+                       f"{technicien_info['prenom']} {technicien_info['nom']}.")
+    else:
+        message = f"Panne #{nouvelle_panne.id_panne} créée. Aucun technicien disponible actuellement."
 
     return PanneDetailResponse(
         id_panne=nouvelle_panne.id_panne,

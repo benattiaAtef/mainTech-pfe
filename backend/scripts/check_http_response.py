@@ -3,7 +3,7 @@ import urllib.parse
 import json
 
 def main():
-    login_url = "http://localhost:8000/auth/login"
+    login_url = "https://maintech-pfe.onrender.com/auth/login"
     payload = {
         "email": "chef3.chef3@gmail.com",
         "mot_de_passe": "mdp123456"
@@ -23,7 +23,7 @@ def main():
             
             # Fetch technicians
             req2 = urllib.request.Request(
-                "http://localhost:8000/techniciens/",
+                "https://maintech-pfe.onrender.com/techniciens/",
                 headers={"Authorization": f"Bearer {token}"}
             )
             with urllib.request.urlopen(req2) as response2:

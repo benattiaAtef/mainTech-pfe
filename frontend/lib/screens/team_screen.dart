@@ -338,6 +338,11 @@ class _TeamScreenState extends State<TeamScreen> {
               onPressed: () => setState(() => _isSearching = true),
             ),
           IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Rafraîchir',
+            onPressed: _refresh,
+          ),
+          IconButton(
             icon: const Icon(Icons.person_add_alt_1_outlined),
             tooltip: 'Ajouter un technicien',
             onPressed: _showAddTechnicianDialog,
