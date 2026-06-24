@@ -255,7 +255,7 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> createManualIntervention(int panneId, int techId, {String typeAffectation = 'manuelle'}) async {
+  Future<Map<String, dynamic>> createManualIntervention(int panneId, int techId, {String typeAffectation = 'MANUELLE'}) async {
     final response = await http.post(
       Uri.parse('$baseUrl/interventions/create'),
       headers: await _getHeaders(),

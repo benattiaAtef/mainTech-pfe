@@ -310,7 +310,7 @@ class _MachineDetailScreenState extends State<MachineDetailScreen> {
       );
 
       if (selectedTech != null) {
-        String typeAffectation = 'manuelle';
+        String typeAffectation = 'MANUELLE';
         
         // Vérifier si c'est une intervention inter-groupe (Exceptionnelle)
         final bool isInterGroupe = selectedTech.idGroupe != _machine.idGroupeTechPrincipal;
@@ -332,7 +332,7 @@ class _MachineDetailScreenState extends State<MachineDetailScreen> {
           );
           
           if (confirmExceptional != true) return;
-          typeAffectation = 'urgente';
+          typeAffectation = 'URGENTE';
         }
 
         // Obtenir les pannes spécifiques à cette machine

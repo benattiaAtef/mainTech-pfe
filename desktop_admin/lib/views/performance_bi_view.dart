@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../services/api_service.dart';
 import '../theme/app_theme.dart';
 import '../models/models.dart';
+import '../components/power_bi_webview.dart';
 
 class PerformanceBIView extends StatefulWidget {
   const PerformanceBIView({super.key});
@@ -17,6 +18,10 @@ class _PerformanceBIViewState extends State<PerformanceBIView> {
   List<Intervention> _interventions = [];
   List<Machine> _machines = [];
   List<Map<String, dynamic>> _pannes = [];
+
+  bool _showPowerBI = false;
+  // URL Power BI - Modifiable par l'utilisateur
+  final String _powerBiUrl = "https://app.powerbi.com/view?r=eyJrIjoiZWNmY2NmMDMtZGUxNS00Y2FlLWIxNzEtMTU4MzhkMGQxYzA2IiwidCI6ImM0OTM2N2M1LWQyYTMtNGE1Zi1iNjZlLWMxYjhhYzA0NmY1NyIsImMiOjF9";
 
   @override
   void initState() {
@@ -51,26 +56,93 @@ class _PerformanceBIViewState extends State<PerformanceBIView> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Analyses de Performance & BI', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
-        const Text('Vision stratégique et indicateurs clés de maintenance', style: TextStyle(color: AppTheme.textGrey)),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Analyses de Performance & BI', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.textDark)),
+                Text(
+                  _showPowerBI ? 'Rapport cloud interactif Power BI' : 'Vision stratégique et indicateurs clés de maintenance',
+                  style: const TextStyle(color: AppTheme.textGrey),
+                ),
+              ],
+            ),
+            // Commutateur esthétique (Toggle Switch)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFF1F5F9)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.02),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    'Local',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: !_showPowerBI ? FontWeight.bold : FontWeight.normal,
+                      color: !_showPowerBI ? AppTheme.primaryBlue : AppTheme.textGrey,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Switch(
+                    value: _showPowerBI,
+                    activeColor: AppTheme.primaryBlue,
+                    onChanged: (val) {
+                      setState(() {
+                        _showPowerBI = val;
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Power BI Cloud',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: _showPowerBI ? FontWeight.bold : FontWeight.normal,
+                      color: _showPowerBI ? AppTheme.primaryBlue : AppTheme.textGrey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 32),
         
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(flex: 2, child: _buildLineChartCard()),
-            const SizedBox(width: 24),
-            Expanded(flex: 1, child: _buildPieChartCard()),
-          ],
-        ),
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            Expanded(child: _buildBarChartCard()),
-            const SizedBox(width: 24),
-            Expanded(child: _buildStatsGrid()),
-          ],
-        ),
+        if (_showPowerBI)
+          SizedBox(
+            height: 650,
+            child: PowerBiWebView(embedUrl: _powerBiUrl),
+          )
+        else ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 2, child: _buildLineChartCard()),
+              const SizedBox(width: 24),
+              Expanded(flex: 1, child: _buildPieChartCard()),
+            ],
+          ),
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              Expanded(child: _buildBarChartCard()),
+              const SizedBox(width: 24),
+              Expanded(child: _buildStatsGrid()),
+            ],
+          ),
+        ],
       ],
     );
   }

@@ -786,57 +786,62 @@ async def autoriser_intervention(
                 "id_panne": panne.id_panne if panne else None,
             })
 
-        # Notifier les Chefs d'Équipe (UNE SEULE FOIS)
+        # ── Notifications après refus ──
         try:
             from app.models.users import ChefEquipe
-            msg_refus = f"❌ La demande d'autorisation exceptionnelle pour {tech_nom} sur la machine '{machine_nom}' a été refusée et reste en attente jusqu'à ce qu'un technicien devienne disponible."
-            chef_autorisation = db.query(ChefEquipe).filter(ChefEquipe.id_chef == autorisation.id_chef_equipe).first()
-            if chef_autorisation and chef_autorisation.id_utilisateur:
-                await notification_manager.ws_manager.send(chef_autorisation.id_utilisateur, {
+
+            # 1. Le chef qui a refusé reçoit AUTORISATION_REFUSEE (rafraîchit sa liste)
+            chef_refuseur = db.query(ChefEquipe).filter(ChefEquipe.id_chef == autorisation.id_chef_equipe).first()
+            id_utilisateur_refuseur = chef_refuseur.id_utilisateur if chef_refuseur else None
+            if id_utilisateur_refuseur:
+                await notification_manager.ws_manager.send(id_utilisateur_refuseur, {
                     "type": "AUTORISATION_REFUSEE",
-                    "message": msg_refus,
+                    "message": f"✅ Vous avez refusé la demande d'autorisation pour {tech_nom} sur '{machine_nom}'.",
                     "id_intervention": id_intervention,
                     "id_panne": panne.id_panne if panne else None,
                 })
-                if chef_autorisation.utilisateur and chef_autorisation.utilisateur.fcm_token:
-                    await notification_manager.envoyer_fcm(
-                        fcm_token=chef_autorisation.utilisateur.fcm_token,
-                        titre="❌ Autorisation refusée",
-                        corps=msg_refus,
-                        data={"type": "AUTORISATION_REFUSEE", "id_intervention": str(id_intervention), "id_panne": str(panne.id_panne) if panne else ""},
-                        gravite="haute"
-                    )
+
+            # 2. Le chef du groupe de la machine reçoit DEMANDE_AUTORISATION
+            #    SEULEMENT s'il est différent du chef qui vient de refuser
+            #    (évite d'envoyer 2 notifications au même utilisateur)
             if machine and machine.groupe_machine:
                 chef_machine = db.query(ChefEquipe).filter(
                     ChefEquipe.id_groupe_supervise == machine.groupe_machine.id_groupe_tech_principal
                 ).first()
-                if chef_machine and chef_machine.id_utilisateur and (not chef_autorisation or chef_machine.id_utilisateur != chef_autorisation.id_utilisateur):
+                if (chef_machine and chef_machine.id_utilisateur
+                        and chef_machine.id_utilisateur != id_utilisateur_refuseur):
+                    msg_attente = (
+                        f"⚠️ La panne sur '{machine_nom}' est en attente après le refus "
+                        f"de la demande de {tech_nom}. Veuillez affecter un technicien."
+                    )
                     await notification_manager.ws_manager.send(chef_machine.id_utilisateur, {
-                        "type": "AUTORISATION_REFUSEE",
-                        "message": msg_refus,
+                        "type": "DEMANDE_AUTORISATION",
+                        "message": msg_attente,
                         "id_intervention": id_intervention,
                         "id_panne": panne.id_panne if panne else None,
                     })
                     if chef_machine.utilisateur and chef_machine.utilisateur.fcm_token:
                         await notification_manager.envoyer_fcm(
                             fcm_token=chef_machine.utilisateur.fcm_token,
-                            titre="❌ Autorisation refusée",
-                            corps=msg_refus,
-                            data={"type": "AUTORISATION_REFUSEE", "id_intervention": str(id_intervention), "id_panne": str(panne.id_panne) if panne else ""},
+                            titre=f"⚠️ Panne en attente - {machine_nom}",
+                            corps=msg_attente,
+                            data={
+                                "type": "DEMANDE_AUTORISATION",
+                                "id_panne": str(panne.id_panne) if panne else "",
+                            },
                             gravite="haute"
                         )
         except Exception as ex:
             import logging
-            logging.getLogger(__name__).warning(f"[NOTIF] Erreur notification refus autorisation chef: {ex}")
+            logging.getLogger(__name__).warning(f"[NOTIF] Erreur notification refus: {ex}")
 
-        # CORRECTIF BOUCLE INFINIE :
-        # On cherche un AUTRE technicien pour cette panne (jamais le technicien refusé).
-        # On N'appelle PLUS assigner_panne_en_attente_si_possible(tech_refuse)
-        # car cela réaffecterait immédiatement le même technicien refusé à la même panne.
+        # Cherche un technicien du groupe principal uniquement (jamais inter-groupe pour éviter la boucle)
         if panne and tech:
             await assigner_panne_en_attente_pour_autre_tech(db, panne.id_panne, tech.id_technicien)
 
         return {"message": "Intervention rejetée. La panne est remise en attente.", "statut": "refusee"}
+
+
 
 
 @router_interventions.post("/{id_intervention}/renfort")

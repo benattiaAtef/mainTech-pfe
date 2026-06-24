@@ -5,6 +5,14 @@ import 'package:web_socket_channel/web_socket_channel.dart';
 import 'api_service.dart';
 
 class WebSocketService {
+  static final WebSocketService _instance = WebSocketService._internal();
+
+  factory WebSocketService() {
+    return _instance;
+  }
+
+  WebSocketService._internal();
+
   WebSocketChannel? _channel;
   bool _isConnected = false;
   int? _currentUserId;

@@ -54,14 +54,48 @@ class _TeamLeaderDashboardState extends State<TeamLeaderDashboard> {
           final data = jsonDecode(event.toString());
           if (data['type'] == 'DEMANDE_AUTORISATION') {
             if (mounted) {
+              // Afficher le message du backend s'il existe, sinon le texte générique
+              final String message = data['message'] != null && (data['message'] as String).isNotEmpty
+                  ? data['message']
+                  : 'Nouvelle demande d\'autorisation reçue !';
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Nouvelle demande d\'autorisation reçue !'),
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.notification_important_rounded, color: Colors.white),
+                      const SizedBox(width: 10),
+                      Expanded(child: Text(message)),
+                    ],
+                  ),
                   backgroundColor: Colors.orange,
-                  duration: Duration(seconds: 5),
+                  duration: const Duration(seconds: 6),
+                  behavior: SnackBarBehavior.floating,
                 ),
               );
-              _loadData(); // Auto-refresh the list
+              _loadData(); // Auto-refresh la liste des autorisations
+            }
+          } else if (data['type'] == 'AUTORISATION_REFUSEE') {
+            if (mounted) {
+              // Ce message confirme que le refus a bien été pris en compte (retour au chef qui a refusé)
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Row(
+                    children: [
+                      const Icon(Icons.check_circle_outline, color: Colors.white),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          data['message'] ?? 'Demande d\'autorisation refusée avec succès.',
+                        ),
+                      ),
+                    ],
+                  ),
+                  backgroundColor: Colors.teal,
+                  duration: const Duration(seconds: 5),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+              _loadData(); // Rafraîchit la liste (la demande disparaît)
             }
           } else if (data['type'] == 'SIGNALING') {
             final signal = data['data'];
@@ -76,6 +110,7 @@ class _TeamLeaderDashboardState extends State<TeamLeaderDashboard> {
       });
     }
   }
+
 
   void _handleIncomingCall(int fromId, dynamic signal) {
     if (!mounted) return;

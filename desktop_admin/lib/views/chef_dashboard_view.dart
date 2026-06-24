@@ -76,6 +76,17 @@ class _ChefDashboardViewState extends State<ChefDashboardView> {
               );
               _loadDashboardData(); // Auto-refresh the list
             }
+          } else if (data['type'] == 'AUTORISATION_REFUSEE') {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(data['message'] ?? 'Une demande d\'autorisation exceptionnelle a été refusée.'),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 5),
+                ),
+              );
+              _loadDashboardData(); // Auto-refresh the list
+            }
           }
         } catch (e) {
           debugPrint('Error parsing WebSocket event: $e');
@@ -188,10 +199,12 @@ class _ChefDashboardViewState extends State<ChefDashboardView> {
   void _applyMachineSearch() {
     final query = _searchController.text.toLowerCase();
     setState(() {
+      // The backend already pre-filters machines for CHEF_EQUIPE by their
+      // supervised group, so no client-side group filtering is needed here.
+      // Filtering by m.idGroupe (id_groupe_machine) vs id_groupe_supervise
+      // (id_groupe_tech) was comparing IDs from different spaces → always false.
       _filteredMachines = _allMachines.where((m) {
-        final groupId = _chefProfile?['id_groupe_supervise'];
-        if (groupId != null && m.idGroupe != groupId) return false;
-
+        if (query.isEmpty) return true;
         return m.nom.toLowerCase().contains(query) ||
                m.localisation.toLowerCase().contains(query);
       }).toList();

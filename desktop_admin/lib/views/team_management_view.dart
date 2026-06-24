@@ -437,13 +437,18 @@ class _TeamManagementViewState extends State<TeamManagementView> {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () async {
-                      final newStatus = isFree ? 'occupe' : 'disponible';
+                      final techId = tech['id_technicien'] ?? tech['id'];
+                      final newStatus = isFree ? 'indisponible' : 'disponible';
+                      if (techId == null) {
+                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erreur: ID technicien introuvable'), backgroundColor: Colors.red));
+                        return;
+                      }
                       try {
-                        await _apiService.updateTechnicianStatut(tech['id'], newStatus);
+                        await _apiService.updateTechnicianStatut(techId, newStatus);
                         if (context.mounted) Navigator.pop(context);
                         _loadTeam();
                       } catch (e) {
-                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e')));
+                        if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red));
                       }
                     },
                     icon: Icon(isFree ? Icons.block_flipped : Icons.check_circle_outline, color: Colors.white),
@@ -557,7 +562,8 @@ class _TeamManagementViewState extends State<TeamManagementView> {
 
     if (confirm == true) {
       try {
-        await _apiService.deleteTechnician(tech['id']);
+        final techId = tech['id_technicien'] ?? tech['id'];
+        await _apiService.deleteTechnician(techId);
         if (mounted) {
           Navigator.pop(context); // Close details dialog
           _loadTeam();

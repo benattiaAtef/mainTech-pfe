@@ -266,15 +266,20 @@ async def assigner_panne_en_attente_si_possible(db: Session, id_technicien: int)
 async def assigner_panne_en_attente_pour_autre_tech(db: Session, id_panne: int, id_technicien_exclu: int):
     """
     CORRECTIF BOUCLE INFINIE : Après un refus d'autorisation exceptionnelle,
-    cherche UN AUTRE technicien disponible pour la panne (excluant le technicien refusé).
-    
-    Si aucun autre technicien n'est disponible, la panne reste simplement en EN_ATTENTE
-    et sera traitée automatiquement dès qu'un autre technicien sera libre.
+    cherche UN technicien du GROUPE PRINCIPAL de la machine uniquement (AUTOMATIQUE).
+
+    ⚠️ IMPORTANT : On ne crée JAMAIS d'affectation URGENTE (inter-groupe) ici,
+    car cela créerait une nouvelle AutorisationExceptionnelle → nouvelle notification
+    au chef → nouveau refus possible → boucle infinie.
+
+    Si aucun technicien du groupe principal n'est disponible,
+    la panne reste EN_ATTENTE et sera traitée automatiquement
+    dès qu'un technicien de ce groupe se libère.
     """
     from app.models.panne import Panne
     from app.models.intervention import Intervention
-    from app.models.enums import StatutPanneEnum, StatutInterventionEnum, StatutTechnicienEnum
-    from app.utils import notification_manager
+    from app.models.autorisation import AutorisationExceptionnelle
+    from app.models.enums import StatutPanneEnum, StatutInterventionEnum, StatutTechnicienEnum, StatutAutorisationEnum
 
     panne = db.query(Panne).filter(Panne.id_panne == id_panne).first()
     if not panne or not panne.machine or not panne.machine.groupe_machine:
@@ -282,59 +287,44 @@ async def assigner_panne_en_attente_pour_autre_tech(db: Session, id_panne: int, 
 
     id_groupe_tech_requis = panne.machine.groupe_machine.id_groupe_tech_principal
 
-    # 1. Chercher d'abord dans le groupe principal (excluant le technicien refusé)
+    # Obtenir tous les techniciens qui ont déjà été refusés pour cette panne
+    techs_refuses = db.query(Intervention.id_technicien).join(
+        AutorisationExceptionnelle, AutorisationExceptionnelle.id_intervention == Intervention.id_intervention
+    ).filter(
+        Intervention.id_panne == id_panne,
+        AutorisationExceptionnelle.statut == StatutAutorisationEnum.REFUSEE
+    ).all()
+
+    ids_techs_exclus = [t[0] for t in techs_refuses]
+    if id_technicien_exclu not in ids_techs_exclus:
+        ids_techs_exclus.append(id_technicien_exclu)
+
+    # Chercher UNIQUEMENT dans le groupe principal de la machine (AUTOMATIQUE, pas d'autorisation requise)
+    # On exclut tous les techniciens déjà refusés pour cette panne
     candidats = (
         db.query(Technicien)
         .filter(
             Technicien.id_groupe_principal == id_groupe_tech_requis,
             Technicien.statut == StatutTechnicienEnum.DISPONIBLE,
-            Technicien.id_technicien != id_technicien_exclu,
+            ~Technicien.id_technicien.in_(ids_techs_exclus),
         )
         .all()
     )
 
     if candidats:
         meilleur = min(candidats, key=lambda t: t.date_dernier_statut or datetime.utcnow())
+        logger.info(f"[REFUS AUTH] Panne {id_panne} → réassignée au tech {meilleur.id_technicien} (groupe principal, AUTOMATIQUE)")
         return await _creer_intervention_directe(db, meilleur, panne, TypeAffectationEnum.AUTOMATIQUE)
 
-    # 2. Chercher dans les autres groupes avec compétence (excluant le technicien refusé)
-    competent_ids = (
-        db.query(CompetenceTechnicien.id_technicien)
-        .filter(CompetenceTechnicien.id_groupe_machine == panne.machine.id_groupe_machine)
-        .all()
+    # ⛔ On ne fait PAS de recherche inter-groupe ici pour éviter la boucle infinie.
+    # La panne reste EN_ATTENTE → sera assignée automatiquement quand un tech du bon groupe se libère.
+    logger.info(
+        f"[REFUS AUTH] Panne {id_panne} reste EN_ATTENTE - aucun technicien disponible "
+        f"dans le groupe {id_groupe_tech_requis} (techs exclus: {ids_techs_exclus})"
     )
-    competent_ids = [cid[0] for cid in competent_ids]
-
-    candidats_ext = (
-        db.query(Technicien)
-        .filter(
-            Technicien.id_technicien.in_(competent_ids),
-            Technicien.id_groupe_principal != id_groupe_tech_requis,
-            Technicien.statut == StatutTechnicienEnum.DISPONIBLE,
-            Technicien.id_technicien != id_technicien_exclu,  # Exclure le technicien refusé
-        )
-        .all()
-    )
-
-    candidats_valides = []
-    for tech in candidats_ext:
-        groupe = tech.groupe_principal
-        if not groupe:
-            continue
-        libres = db.query(Technicien).filter(
-            Technicien.id_groupe_principal == groupe.id_groupe_tech,
-            Technicien.statut == StatutTechnicienEnum.DISPONIBLE
-        ).count()
-        if libres > groupe.nombre_min_dispo:
-            candidats_valides.append(tech)
-
-    if candidats_valides:
-        meilleur = min(candidats_valides, key=lambda t: t.date_dernier_statut or datetime.utcnow())
-        return await _creer_intervention_directe(db, meilleur, panne, TypeAffectationEnum.URGENTE)
-
-    # Aucun autre technicien disponible → la panne reste EN_ATTENTE
-    logger.info(f"[REFUS AUTH] Panne {id_panne} reste EN_ATTENTE - aucun autre technicien disponible (tech exclu: {id_technicien_exclu})")
     return None
+
+
 
 
 

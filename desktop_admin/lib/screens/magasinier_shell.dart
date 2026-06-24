@@ -22,7 +22,6 @@ class _MagasinierShellState extends State<MagasinierShell> {
     MagasinierMenuItem(title: 'Tableau de Bord', icon: FontAwesomeIcons.chartLine),
     MagasinierMenuItem(title: 'Gestion du Stock', icon: FontAwesomeIcons.boxesStacked),
     MagasinierMenuItem(title: 'Demandes de Pièces', icon: FontAwesomeIcons.envelopeOpenText),
-    MagasinierMenuItem(title: 'Paramètres', icon: FontAwesomeIcons.gear),
   ];
 
   Widget _buildCurrentView() {
@@ -35,8 +34,6 @@ class _MagasinierShellState extends State<MagasinierShell> {
         return const MagasinierInventoryView();
       case 2:
         return const MagasinierRequestsView();
-      case 3:
-        return _buildSettingsPlaceholder();
       default:
         return const Center(child: Text('Vue non implémentée'));
     }
@@ -247,17 +244,7 @@ class _MagasinierShellState extends State<MagasinierShell> {
     );
   }
 
-  Widget _buildSettingsPlaceholder() {
-    return Container(
-      padding: const EdgeInsets.all(40),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-      ),
-      child: const Center(child: Text('Paramètres du compte bientôt disponibles')),
-    );
-  }
+
 }
 
 class MagasinierMenuItem {
