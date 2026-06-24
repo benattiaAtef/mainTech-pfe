@@ -226,14 +226,19 @@ async def assigner_panne_en_attente_si_possible(db: Session, id_technicien: int)
         print(f"[DEBUG_ASSIGN] Panne {panne.id_panne} | Req Group {req_group} | Tech Group {tech.id_groupe_principal}")
         if req_group == tech.id_groupe_principal:
             # Vérifier si ce technicien a déjà été refusé pour cette panne (évite la boucle infinie)
-            inter_ids_pour_panne_et_tech = db.query(Intervention.id_intervention).filter(
-                Intervention.id_panne == panne.id_panne,
-                Intervention.id_technicien == tech.id_technicien
-            ).subquery()
-            deja_refuse_p1 = db.query(AutorisationExceptionnelle).filter(
-                AutorisationExceptionnelle.id_intervention.in_(inter_ids_pour_panne_et_tech),
-                AutorisationExceptionnelle.statut == StatutAutorisationEnum.REFUSEE
-            ).first() is not None
+            inter_ids_p1 = [
+                r[0] for r in db.query(Intervention.id_intervention).filter(
+                    Intervention.id_panne == panne.id_panne,
+                    Intervention.id_technicien == tech.id_technicien
+                ).all()
+            ]
+            deja_refuse_p1 = False
+            if inter_ids_p1:
+                deja_refuse_p1 = db.query(AutorisationExceptionnelle).filter(
+                    AutorisationExceptionnelle.id_intervention.in_(inter_ids_p1),
+                    AutorisationExceptionnelle.statut == StatutAutorisationEnum.REFUSEE
+                ).first() is not None
+                
             if deja_refuse_p1:
                 logger.info(f"[ANTI-BOUCLE] Tech {tech.id_technicien} déjà refusé pour Panne {panne.id_panne} (P1) → ignoré")
                 continue  # Ne pas réassigner ce technicien refusé à cette même panne
@@ -245,14 +250,18 @@ async def assigner_panne_en_attente_si_possible(db: Session, id_technicien: int)
         has_competence = any(c.id_groupe_machine == panne.machine.id_groupe_machine for c in tech.competences)
         if has_competence:
             # Vérifier si ce technicien a déjà été refusé pour cette panne
-            inter_ids_pour_panne_et_tech2 = db.query(Intervention.id_intervention).filter(
-                Intervention.id_panne == panne.id_panne,
-                Intervention.id_technicien == tech.id_technicien
-            ).subquery()
-            deja_refuse = db.query(AutorisationExceptionnelle).filter(
-                AutorisationExceptionnelle.id_intervention.in_(inter_ids_pour_panne_et_tech2),
-                AutorisationExceptionnelle.statut == StatutAutorisationEnum.REFUSEE
-            ).first() is not None
+            inter_ids_p2 = [
+                r[0] for r in db.query(Intervention.id_intervention).filter(
+                    Intervention.id_panne == panne.id_panne,
+                    Intervention.id_technicien == tech.id_technicien
+                ).all()
+            ]
+            deja_refuse = False
+            if inter_ids_p2:
+                deja_refuse = db.query(AutorisationExceptionnelle).filter(
+                    AutorisationExceptionnelle.id_intervention.in_(inter_ids_p2),
+                    AutorisationExceptionnelle.statut == StatutAutorisationEnum.REFUSEE
+                ).first() is not None
             
             if deja_refuse:
                 logger.info(f"[ANTI-BOUCLE] Tech {tech.id_technicien} déjà refusé pour Panne {panne.id_panne} (P2) → ignoré")
