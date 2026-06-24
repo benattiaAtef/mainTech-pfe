@@ -219,22 +219,25 @@ async def assigner_panne_en_attente_si_possible(db: Session, id_technicien: int)
     if not pannes_en_attente:
         return None
     # Priorité 1 : Même groupe
+    from app.models.autorisation import AutorisationExceptionnelle
+    from app.models.enums import StatutAutorisationEnum
     for panne in pannes_en_attente:
         req_group = panne.machine.groupe_machine.id_groupe_tech_principal
         print(f"[DEBUG_ASSIGN] Panne {panne.id_panne} | Req Group {req_group} | Tech Group {tech.id_groupe_principal}")
         if req_group == tech.id_groupe_principal:
             # Vérifier si ce technicien a déjà été refusé pour cette panne (évite la boucle infinie)
-            from app.models.autorisation import AutorisationExceptionnelle
-            from app.models.enums import StatutAutorisationEnum
-            deja_refuse_p1 = db.query(AutorisationExceptionnelle).join(Intervention).filter(
+            inter_ids_pour_panne_et_tech = db.query(Intervention.id_intervention).filter(
                 Intervention.id_panne == panne.id_panne,
-                Intervention.id_technicien == tech.id_technicien,
+                Intervention.id_technicien == tech.id_technicien
+            ).subquery()
+            deja_refuse_p1 = db.query(AutorisationExceptionnelle).filter(
+                AutorisationExceptionnelle.id_intervention.in_(inter_ids_pour_panne_et_tech),
                 AutorisationExceptionnelle.statut == StatutAutorisationEnum.REFUSEE
             ).first() is not None
             if deja_refuse_p1:
+                logger.info(f"[ANTI-BOUCLE] Tech {tech.id_technicien} déjà refusé pour Panne {panne.id_panne} (P1) → ignoré")
                 continue  # Ne pas réassigner ce technicien refusé à cette même panne
             return await _creer_intervention_directe(db, tech, panne, TypeAffectationEnum.AUTOMATIQUE)
-
 
     # Priorité 2 : Autre groupe avec compétence (URGENTE mais directe)
     for panne in pannes_en_attente:
@@ -242,16 +245,18 @@ async def assigner_panne_en_attente_si_possible(db: Session, id_technicien: int)
         has_competence = any(c.id_groupe_machine == panne.machine.id_groupe_machine for c in tech.competences)
         if has_competence:
             # Vérifier si ce technicien a déjà été refusé pour cette panne
-            from app.models.autorisation import AutorisationExceptionnelle
-            from app.models.enums import StatutAutorisationEnum
-            deja_refuse = db.query(AutorisationExceptionnelle).join(Intervention).filter(
+            inter_ids_pour_panne_et_tech2 = db.query(Intervention.id_intervention).filter(
                 Intervention.id_panne == panne.id_panne,
-                Intervention.id_technicien == tech.id_technicien,
+                Intervention.id_technicien == tech.id_technicien
+            ).subquery()
+            deja_refuse = db.query(AutorisationExceptionnelle).filter(
+                AutorisationExceptionnelle.id_intervention.in_(inter_ids_pour_panne_et_tech2),
                 AutorisationExceptionnelle.statut == StatutAutorisationEnum.REFUSEE
             ).first() is not None
             
             if deja_refuse:
-                continue # Passer à une autre panne pour ce tech
+                logger.info(f"[ANTI-BOUCLE] Tech {tech.id_technicien} déjà refusé pour Panne {panne.id_panne} (P2) → ignoré")
+                continue  # Passer à une autre panne pour ce tech
                 
             return await _creer_intervention_directe(db, tech, panne, TypeAffectationEnum.URGENTE)
 
