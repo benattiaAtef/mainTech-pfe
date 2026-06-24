@@ -182,7 +182,7 @@ def list_demandes_by_intervention(
 
 
 @router_magasin.put("/demandes/{id_demande}/statut", response_model=DemandeRechangeOut)
-def changer_statut_demande(
+async def changer_statut_demande(
     id_demande: int,
     data: DemandeStatutUpdate,
     db: Session = Depends(get_db),
@@ -228,6 +228,54 @@ def changer_statut_demande(
     demande.statut = new_statut
     db.commit()
     db.refresh(demande)
+
+    # ── Notification au technicien si la demande est REFUSÉE ──────────────────
+    if new_statut == StatutDemandeEnum.REFUSEE:
+        try:
+            from app.utils import notification_manager
+            from app.models.users import Technicien
+            # Remonter la chaîne : demande → intervention → technicien → utilisateur
+            intervention = demande.intervention
+            if intervention:
+                tech = db.query(Technicien).options(
+                    __import__('sqlalchemy.orm', fromlist=['joinedload']).joinedload(Technicien.utilisateur)
+                ).filter(Technicien.id_technicien == intervention.id_technicien).first()
+
+                if tech and tech.utilisateur:
+                    piece_nom = demande.piece.nom if demande.piece else "Pièce inconnue"
+                    user_id = tech.utilisateur.id_utilisateur
+                    fcm_token = tech.utilisateur.fcm_token or None
+
+                    # WebSocket (app ouverte)
+                    await notification_manager.ws_manager.send(user_id, {
+                        "type": "DEMANDE_PIECE_REFUSEE",
+                        "message": f"❌ Votre demande de '{piece_nom}' (x{demande.quantite_demandee}) pour l'intervention #{intervention.id_intervention} a été refusée.",
+                        "id_demande": id_demande,
+                        "id_intervention": intervention.id_intervention,
+                        "piece_nom": piece_nom,
+                    })
+
+                    # FCM (app fermée)
+                    if fcm_token:
+                        await notification_manager.envoyer_fcm(
+                            fcm_token=fcm_token,
+                            titre="❌ Demande de pièce refusée",
+                            corps=f"Votre demande de '{piece_nom}' pour l'intervention #{intervention.id_intervention} a été refusée.",
+                            data={
+                                "type": "DEMANDE_PIECE_REFUSEE",
+                                "id_demande": str(id_demande),
+                                "id_intervention": str(intervention.id_intervention),
+                                "piece_nom": piece_nom,
+                            },
+                            gravite="haute",
+                        )
+        except Exception as e:
+            # Ne pas bloquer la réponse si la notification échoue
+            import logging
+            logging.getLogger(__name__).warning(f"[NOTIF] Erreur notification refus pièce: {e}")
+    # ─────────────────────────────────────────────────────────────────────────
+
     return db.query(DemandeRechange).options(
         joinedload(DemandeRechange.piece)
     ).filter(DemandeRechange.id_demande == id_demande).first()
+
