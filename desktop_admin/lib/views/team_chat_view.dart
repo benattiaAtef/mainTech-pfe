@@ -390,13 +390,67 @@ class _TeamChatViewState extends State<TeamChatView> {
           const Text('Discussion d\'Équipe', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const Spacer(),
           TextButton.icon(
-            onPressed: () => _showCallOverlay({'prenom': 'Toute', 'nom': 'l\'équipe', 'role': 'Conférence Groupée'}),
-            icon: const Icon(Icons.groups_rounded, size: 20),
-            label: const Text('Appel Groupe'),
+            onPressed: _initiateCall,
+            icon: const Icon(Icons.phone_in_talk_rounded, size: 20),
+            label: const Text('Appeler'),
             style: TextButton.styleFrom(foregroundColor: AppTheme.primaryBlue),
           ),
           const SizedBox(width: 12),
           Text('${_messages.length} messages échangés', style: TextStyle(color: AppTheme.textGrey, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  void _initiateCall() {
+    final otherMembers = _members.where(
+      (m) => m['id_utilisateur'] != _currentUserId && m['statut_presence'] == 'en_travail'
+    ).toList();
+    
+    if (otherMembers.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Aucun autre membre disponible pour un appel")),
+      );
+      return;
+    }
+
+    if (otherMembers.length == 1) {
+      _showCallOverlay(otherMembers.first);
+    } else {
+      _showCallSelectionDialog(otherMembers);
+    }
+  }
+
+  void _showCallSelectionDialog(List<Map<String, dynamic>> members) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Appeler un membre"),
+        content: SizedBox(
+          width: 400,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: members.length,
+            itemBuilder: (context, index) {
+              final member = members[index];
+              return ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: member['is_chef'] == true ? Colors.orange : AppTheme.primaryBlue,
+                  child: Icon(member['is_chef'] == true ? Icons.star : Icons.person, color: Colors.white, size: 20),
+                ),
+                title: Text("${member['prenom']} ${member['nom']}"),
+                subtitle: Text(member['role'] ?? 'Technicien'),
+                trailing: const Icon(Icons.call, color: Colors.green),
+                onTap: () {
+                  Navigator.pop(context);
+                  _showCallOverlay(member);
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Annuler")),
         ],
       ),
     );
