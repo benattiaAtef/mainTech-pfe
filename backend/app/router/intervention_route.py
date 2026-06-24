@@ -789,12 +789,13 @@ async def autoriser_intervention(
         # ── Notification aux Chefs d'Équipe ──────────────────────────────
         try:
             from app.models.users import ChefEquipe
+            msg_refus = f"❌ La demande d'autorisation exceptionnelle pour {tech_nom} sur la machine '{machine_nom}' a été refusée et reste en attente jusqu'à ce qu'un technicien devienne disponible."
             # 1. Le chef d'équipe qui a reçu la demande d'autorisation
             chef_autorisation = db.query(ChefEquipe).filter(ChefEquipe.id_chef == autorisation.id_chef_equipe).first()
             if chef_autorisation and chef_autorisation.id_utilisateur:
                 await notification_manager.ws_manager.send(chef_autorisation.id_utilisateur, {
                     "type": "AUTORISATION_REFUSEE",
-                    "message": f"❌ La demande d'autorisation exceptionnelle pour {tech_nom} sur la machine '{machine_nom}' a été refusée.",
+                    "message": msg_refus,
                     "id_intervention": id_intervention,
                     "id_panne": panne.id_panne if panne else None,
                 })
@@ -802,7 +803,7 @@ async def autoriser_intervention(
                     await notification_manager.envoyer_fcm(
                         fcm_token=chef_autorisation.utilisateur.fcm_token,
                         titre="❌ Autorisation refusée",
-                        corps=f"La demande d'autorisation exceptionnelle pour {tech_nom} sur la machine '{machine_nom}' a été refusée.",
+                        corps=msg_refus,
                         data={
                             "type": "AUTORISATION_REFUSEE",
                             "id_intervention": str(id_intervention),
@@ -819,7 +820,7 @@ async def autoriser_intervention(
                 if chef_machine and chef_machine.id_utilisateur and (not chef_autorisation or chef_machine.id_utilisateur != chef_autorisation.id_utilisateur):
                     await notification_manager.ws_manager.send(chef_machine.id_utilisateur, {
                         "type": "AUTORISATION_REFUSEE",
-                        "message": f"❌ La demande d'autorisation exceptionnelle pour {tech_nom} sur la machine '{machine_nom}' a été refusée.",
+                        "message": msg_refus,
                         "id_intervention": id_intervention,
                         "id_panne": panne.id_panne if panne else None,
                     })
@@ -827,7 +828,7 @@ async def autoriser_intervention(
                         await notification_manager.envoyer_fcm(
                             fcm_token=chef_machine.utilisateur.fcm_token,
                             titre="❌ Autorisation refusée",
-                            corps=f"La demande d'autorisation exceptionnelle pour {tech_nom} sur la machine '{machine_nom}' a été refusée.",
+                            corps=msg_refus,
                             data={
                                 "type": "AUTORISATION_REFUSEE",
                                 "id_intervention": str(id_intervention),

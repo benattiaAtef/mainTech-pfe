@@ -230,6 +230,18 @@ async def assigner_panne_en_attente_si_possible(db: Session, id_technicien: int)
         # Vérifier si le tech a la compétence pour ce groupe de machine
         has_competence = any(c.id_groupe_machine == panne.machine.id_groupe_machine for c in tech.competences)
         if has_competence:
+            # Vérifier si ce technicien a déjà été refusé pour cette panne
+            from app.models.autorisation import AutorisationExceptionnelle
+            from app.models.enums import StatutAutorisationEnum
+            deja_refuse = db.query(AutorisationExceptionnelle).join(Intervention).filter(
+                Intervention.id_panne == panne.id_panne,
+                Intervention.id_technicien == tech.id_technicien,
+                AutorisationExceptionnelle.statut == StatutAutorisationEnum.REFUSEE
+            ).first() is not None
+            
+            if deja_refuse:
+                continue # Passer à une autre panne pour ce tech
+                
             return await _creer_intervention_directe(db, tech, panne, TypeAffectationEnum.URGENTE)
 
     return None
