@@ -107,15 +107,17 @@ async def interventions_par_technicien(
     from app.models.autorisation import AutorisationExceptionnelle
     from app.models.enums import StatutAutorisationEnum
 
-    # Get all interventions for this technician
+    # Get all interventions for this technician, excluding those pending exceptional authorization
     query = (
         db.query(Intervention)
+        .outerjoin(AutorisationExceptionnelle, Intervention.id_intervention == AutorisationExceptionnelle.id_intervention)
         .options(
             joinedload(Intervention.technicien),
             joinedload(Intervention.panne).joinedload(Panne.machine)
         )
         .filter(
-            Intervention.id_technicien == id_technicien
+            Intervention.id_technicien == id_technicien,
+            (AutorisationExceptionnelle.id_autorisation.is_(None)) | (AutorisationExceptionnelle.statut != StatutAutorisationEnum.EN_ATTENTE)
         )
     )
 

@@ -260,11 +260,17 @@ async def get_mes_interventions(
         if current_user.role not in [RoleEnum.CHEF_EQUIPE, RoleEnum.ADMINISTRATEUR]:
             raise HTTPException(status_code=403, detail="Non autorisé")
     
-    interventions = db.query(Intervention).options(
-        joinedload(Intervention.panne).joinedload(Panne.machine)
-    ).filter(
-        Intervention.id_technicien == technicien_id
-    ).all()
+    from app.models.autorisation import AutorisationExceptionnelle
+    from app.models.enums import StatutAutorisationEnum
+
+    interventions = db.query(Intervention)\
+        .outerjoin(AutorisationExceptionnelle, Intervention.id_intervention == AutorisationExceptionnelle.id_intervention)\
+        .options(
+            joinedload(Intervention.panne).joinedload(Panne.machine)
+        ).filter(
+            Intervention.id_technicien == technicien_id,
+            (AutorisationExceptionnelle.id_autorisation.is_(None)) | (AutorisationExceptionnelle.statut != StatutAutorisationEnum.EN_ATTENTE)
+        ).all()
     return interventions
 
 
