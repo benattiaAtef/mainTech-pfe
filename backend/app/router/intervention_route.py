@@ -21,7 +21,7 @@ from app.shema.intervention import (
     RapportPanneResponse,
     TerminerInterventionResponse
 )
-from app.utils.panne_util import assigner_panne_en_attente_si_possible, selectionner_technicien_optimal
+from app.utils.panne_util import assigner_panne_en_attente_si_possible, assigner_panne_en_attente_pour_autre_tech, selectionner_technicien_optimal
 from app.utils import stats_util
 
 
@@ -764,7 +764,7 @@ async def autoriser_intervention(
         intervention.panne.statut = StatutPanneEnum.EN_ATTENTE
         intervention.date_fin = datetime.utcnow()
 
-        # ✅ FIX 1 : Libérer le technicien (il était bloqué EN_INTERVENTION sans panne active)
+        # Libérer le technicien
         tech = intervention.technicien
         if tech:
             tech.statut = StatutTechnicienEnum.DISPONIBLE
@@ -772,7 +772,7 @@ async def autoriser_intervention(
 
         db.commit()
 
-        # ✅ FIX 2 : Notifier le technicien et le chef d'équipe du refus
+        # Notifier le technicien du refus
         panne = intervention.panne
         machine = panne.machine if panne else None
         tech_nom = f"{tech.utilisateur.prenom} {tech.utilisateur.nom}" if tech and tech.utilisateur else "Technicien"
@@ -786,11 +786,10 @@ async def autoriser_intervention(
                 "id_panne": panne.id_panne if panne else None,
             })
 
-        # ── Notification aux Chefs d'Équipe ──────────────────────────────
+        # Notifier les Chefs d'Équipe (UNE SEULE FOIS)
         try:
             from app.models.users import ChefEquipe
             msg_refus = f"❌ La demande d'autorisation exceptionnelle pour {tech_nom} sur la machine '{machine_nom}' a été refusée et reste en attente jusqu'à ce qu'un technicien devienne disponible."
-            # 1. Le chef d'équipe qui a reçu la demande d'autorisation
             chef_autorisation = db.query(ChefEquipe).filter(ChefEquipe.id_chef == autorisation.id_chef_equipe).first()
             if chef_autorisation and chef_autorisation.id_utilisateur:
                 await notification_manager.ws_manager.send(chef_autorisation.id_utilisateur, {
@@ -804,15 +803,9 @@ async def autoriser_intervention(
                         fcm_token=chef_autorisation.utilisateur.fcm_token,
                         titre="❌ Autorisation refusée",
                         corps=msg_refus,
-                        data={
-                            "type": "AUTORISATION_REFUSEE",
-                            "id_intervention": str(id_intervention),
-                            "id_panne": str(panne.id_panne) if panne else ""
-                        },
+                        data={"type": "AUTORISATION_REFUSEE", "id_intervention": str(id_intervention), "id_panne": str(panne.id_panne) if panne else ""},
                         gravite="haute"
                     )
-
-            # 2. Le chef d'équipe du groupe de la machine (demandeur)
             if machine and machine.groupe_machine:
                 chef_machine = db.query(ChefEquipe).filter(
                     ChefEquipe.id_groupe_supervise == machine.groupe_machine.id_groupe_tech_principal
@@ -829,20 +822,19 @@ async def autoriser_intervention(
                             fcm_token=chef_machine.utilisateur.fcm_token,
                             titre="❌ Autorisation refusée",
                             corps=msg_refus,
-                            data={
-                                "type": "AUTORISATION_REFUSEE",
-                                "id_intervention": str(id_intervention),
-                                "id_panne": str(panne.id_panne) if panne else ""
-                            },
+                            data={"type": "AUTORISATION_REFUSEE", "id_intervention": str(id_intervention), "id_panne": str(panne.id_panne) if panne else ""},
                             gravite="haute"
                         )
         except Exception as ex:
             import logging
             logging.getLogger(__name__).warning(f"[NOTIF] Erreur notification refus autorisation chef: {ex}")
 
-        # ✅ FIX 3 : Relancer la réaffectation automatique (chercher un autre technicien pour cette panne)
-        if tech:
-            await assigner_panne_en_attente_si_possible(db, tech.id_technicien)
+        # CORRECTIF BOUCLE INFINIE :
+        # On cherche un AUTRE technicien pour cette panne (jamais le technicien refusé).
+        # On N'appelle PLUS assigner_panne_en_attente_si_possible(tech_refuse)
+        # car cela réaffecterait immédiatement le même technicien refusé à la même panne.
+        if panne and tech:
+            await assigner_panne_en_attente_pour_autre_tech(db, panne.id_panne, tech.id_technicien)
 
         return {"message": "Intervention rejetée. La panne est remise en attente.", "statut": "refusee"}
 
